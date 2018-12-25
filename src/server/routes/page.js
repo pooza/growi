@@ -526,8 +526,19 @@ module.exports = function(crowi, app) {
    * @apiParam {String} grant
    */
   api.create = async function(req, res) {
+    function createPagePath (username) {
+      const now = new Date();
+      return '/user/' + username + '/draft'
+        + '/' + ('000' + now.getFullYear()).slice(-4)
+        + '/' + ('0' + (now.getMonth() + 1)).slice(-2)
+        + '/' + ('0' + now.getDate()).slice(-2)
+        + '/' + ('0' + now.getHours()).slice(-2)
+        + ('0' + now.getMinutes()).slice(-2)
+        + ('0' + now.getSeconds()).slice(-2);
+    }
+
     const body = req.body.body || null;
-    const pagePath = req.body.path || null;
+    const pagePath = req.body.path || createPagePath(req.user.username);
     const grant = req.body.grant || null;
     const grantUserGroupId = req.body.grantUserGroupId || null;
     const overwriteScopesOfDescendants = req.body.overwriteScopesOfDescendants || null;
