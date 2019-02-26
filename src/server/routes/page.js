@@ -116,11 +116,12 @@ module.exports = function(crowi, app) {
   }
 
   async function addRenderVarsForUserPage(renderVars, page, requestUser) {
-    const userData = await User.findUserByUsername(User.getUsernameByPath(page.path));
+    const userData = await User.findUserByUsername(User.getUsernameByPath(page.path))
+      .populate(User.IMAGE_POPULATION);
+
     if (userData != null) {
       renderVars.pageUser = userData;
       renderVars.bookmarkList = await Bookmark.findByUser(userData, {limit: 10, populatePage: true, requestUser: requestUser});
-      renderVars.createdList = await Page.findListByCreator(userData, {limit: 10}, requestUser);
     }
   }
 
@@ -185,21 +186,22 @@ module.exports = function(crowi, app) {
   }
 
   async function showPageListForCrowiBehavior(req, res, next) {
-    const path = Page.addSlashOfEnd(getPathFromRequest(req));
+    const portalPath = Page.addSlashOfEnd(getPathFromRequest(req));
     const revisionId = req.query.revision;
 
     // check whether this page has portal page
-    const portalPageStatus = await getPortalPageState(path, req.user);
+    const portalPageStatus = await getPortalPageState(portalPath, req.user);
 
-    const renderVars = { path };
+    let view = 'customlayout-selector/page_list';
+    const renderVars = { path: portalPath };
 
     if (portalPageStatus === PORTAL_STATUS_FORBIDDEN) {
       // inject to req
       req.isForbidden = true;
-      return next();
+      view = 'customlayout-selector/forbidden';
     }
     else if (portalPageStatus === PORTAL_STATUS_EXISTS) {
-      let portalPage = await Page.findByPathAndViewer(path, req.user);
+      let portalPage = await Page.findByPathAndViewer(portalPath, req.user);
       portalPage.initLatestRevisionField(revisionId);
 
       // populate
@@ -212,10 +214,10 @@ module.exports = function(crowi, app) {
     const limit = 50;
     const offset = parseInt(req.query.offset)  || 0;
 
-    await addRenderVarsForDescendants(renderVars, path, req.user, offset, limit);
+    await addRenderVarsForDescendants(renderVars, portalPath, req.user, offset, limit);
 
     await interceptorManager.process('beforeRenderPage', req, res, renderVars);
-    return res.render('customlayout-selector/page_list', renderVars);
+    return res.render(view, renderVars);
   }
 
   async function showPageForGrowiBehavior(req, res, next) {
@@ -231,7 +233,7 @@ module.exports = function(crowi, app) {
     }
     else if (page.redirectTo) {
       debug(`Redirect to '${page.redirectTo}'`);
-      return res.redirect(encodeURI(page.redirectTo + '?redirectFrom=' + pagePathUtils.encodePagePath(page.path)));
+      return res.redirect(encodeURI(page.redirectTo + '?redirectFrom=' + pagePathUtils.encodePagePath(path)));
     }
 
     logger.debug('Page is found when processing pageShowForGrowiBehavior', page._id, page.path);
@@ -332,7 +334,7 @@ module.exports = function(crowi, app) {
 
       if (hasPortalPage) {
         logger.debug('The portal page is found', portalPagePath);
-        return res.redirect(portalPagePath);
+        return res.redirect(encodeURI(portalPagePath + '?redirectFrom=' + pagePathUtils.encodePagePath(req.path)));
       }
     }
 
@@ -622,9 +624,9 @@ module.exports = function(crowi, app) {
       options.grantUserGroupId = grantUserGroupId;
     }
 
+    const Revision = crowi.model('Revision');
+    const previousRevision = await Revision.findById(revisionId);
     try {
-      const Revision = crowi.model('Revision');
-      const previousRevision = await Revision.findById(revisionId);
       page = await Page.updatePage(page, pageBody, previousRevision.body, req.user, options);
     }
     catch (err) {
@@ -651,8 +653,6 @@ module.exports = function(crowi, app) {
 
     // user notification
     if (isSlackEnabled && slackChannels != null) {
-      const Revision = crowi.model('Revision');
-      const previousRevision = await Revision.findById(page.revision);
       await notifyToSlackByUser(page, req.user, slackChannels, 'update', previousRevision);
     }
   };
@@ -954,7 +954,7 @@ module.exports = function(crowi, app) {
    * @apiParam {String} page_id Page Id.
    * @apiParam {String} path
    * @apiParam {String} revision_id
-   * @apiParam {String} new_path
+   * @apiParam {String} new_path New path name.
    * @apiParam {Bool} create_redirect
    */
   api.rename = async function(req, res) {
@@ -1020,7 +1020,7 @@ module.exports = function(crowi, app) {
    * @apiGroup Page
    *
    * @apiParam {String} page_id Page Id.
-   * @apiParam {String} new_path
+   * @apiParam {String} new_path New path name.
    */
   api.duplicate = async function(req, res) {
     const pageId = req.body.page_id;

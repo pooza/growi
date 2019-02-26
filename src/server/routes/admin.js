@@ -692,48 +692,37 @@ module.exports = function(crowi, app) {
   };
 
   // グループ詳細
-  actions.userGroup.detail = function(req, res) {
+  actions.userGroup.detail = async function(req, res) {
     const userGroupId = req.params.id;
     const renderVar = {
       userGroup: null,
       userGroupRelations: [],
-      pageGroupRelations: [],
-      notRelatedusers: []
+      notRelatedusers: [],
+      relatedPages: [],
     };
-    let targetUserGroup = null;
-    UserGroup.findOne({ _id: userGroupId})
-      .then(function(userGroup) {
-        targetUserGroup = userGroup;
-        if (targetUserGroup == null) {
-          req.flash('errorMessage', 'グループがありません');
-          throw new Error('no userGroup is exists. ', name);
-        }
-        else {
-          renderVar.userGroup = targetUserGroup;
 
-          return Promise.all([
-            // get all user and group relations
-            UserGroupRelation.findAllRelationForUserGroup(targetUserGroup),
-            // get all page and group relations
-            PageGroupRelation.findAllRelationForUserGroup(targetUserGroup),
-            // get all not related users for group
-            UserGroupRelation.findUserByNotRelatedGroup(targetUserGroup),
-          ]);
-        }
-      })
-      .then((resolves) => {
-        renderVar.userGroupRelations = resolves[0];
-        renderVar.pageGroupRelations = resolves[1];
-        renderVar.notRelatedusers = resolves[2];
-        debug('notRelatedusers', renderVar.notRelatedusers);
+    const userGroup = await UserGroup.findOne({ _id: userGroupId});
 
-        return res.render('admin/user-group-detail', renderVar);
-      })
-      .catch((err) => {
-        req.flash('errorMessage', 'ユーザグループの検索に失敗しました');
-        debug('Error on get userGroupDetail', err);
-        return res.redirect('/admin/user-groups');
-      });
+    if (userGroup == null) {
+      logger.error('no userGroup is exists. ', userGroupId);
+      req.flash('errorMessage', 'グループがありません');
+      return res.redirect('/admin/user-groups');
+    }
+    renderVar.userGroup = userGroup;
+
+    const resolves = await Promise.all([
+      // get all user and group relations
+      UserGroupRelation.findAllRelationForUserGroup(userGroup),
+      // get all not related users for group
+      UserGroupRelation.findUserByNotRelatedGroup(userGroup),
+      // get all related pages
+      Page.find({grant: Page.GRANT_USER_GROUP, grantedGroup: { $in: [userGroup] }}),
+    ]);
+    renderVar.userGroupRelations = resolves[0];
+    renderVar.notRelatedusers = resolves[1];
+    renderVar.relatedPages = resolves[2];
+
+    return res.render('admin/user-group-detail', renderVar);
   };
 
   //グループの生成
@@ -796,120 +785,12 @@ module.exports = function(crowi, app) {
     });
   };
 
-  actions.userGroup.uploadGroupPicture = function(req, res) {
-    var fileUploader = require('../service/file-uploader')(crowi, app);
-    //var storagePlugin = new pluginService('storage');
-    //var storage = require('../service/storage').StorageService(config);
-
-    var userGroupId = req.params.userGroupId;
-
-    var tmpFile = req.file || null;
-    if (!tmpFile) {
-      return res.json({
-        'status': false,
-        'message': 'File type error.'
-      });
-    }
-
-    UserGroup.findById(userGroupId, function(err, userGroupData) {
-      if (!userGroupData) {
-        return res.json({
-          'status': false,
-          'message': 'UserGroup error.'
-        });
-      }
-
-      var tmpPath = tmpFile.path;
-      var filePath = UserGroup.createUserGroupPictureFilePath(userGroupData, tmpFile.filename + tmpFile.originalname);
-      var acceptableFileType = /image\/.+/;
-
-      if (!tmpFile.mimetype.match(acceptableFileType)) {
-        return res.json({
-          'status': false,
-          'message': 'File type error. Only image files is allowed to set as user picture.',
-        });
-      }
-
-      var tmpFileStream = fs.createReadStream(tmpPath, { flags: 'r', encoding: null, fd: null, mode: '0666', autoClose: true });
-
-      fileUploader.uploadFile(filePath, tmpFile.mimetype, tmpFileStream, {})
-        .then(function(data) {
-          var imageUrl = fileUploader.generateUrl(filePath);
-          userGroupData.updateImage(imageUrl)
-          .then(() => {
-            fs.unlink(tmpPath, function(err) {
-              if (err) {
-                debug('Error while deleting tmp file.', err);
-              }
-
-              return res.json({
-                'status': true,
-                'url': imageUrl,
-                'message': '',
-              });
-            });
-          });
-        }).catch(function(err) {
-          debug('Uploading error', err);
-
-          return res.json({
-            'status': false,
-            'message': 'Error while uploading to ',
-          });
-        });
-    });
-
-  };
-
-  actions.userGroup.deletePicture = function(req, res) {
-
-    const userGroupId = req.params.userGroupId;
-    let userGroupName = null;
-
-    UserGroup.findById(userGroupId)
-    .then((userGroupData) => {
-      if (userGroupData == null) {
-        return Promise.reject();
-      }
-      else {
-        userGroupName = userGroupData.name;
-        return userGroupData.deleteImage();
-      }
-    })
-    .then((updated) => {
-      req.flash('successMessage', 'Deleted group picture');
-
-      return res.redirect('/admin/user-group-detail/' + userGroupId);
-    })
-    .catch((err) => {
-      debug('An error occured.', err);
-
-      req.flash('errorMessage', 'Error while deleting group picture');
-      if (userGroupName == null) {
-        return res.redirect('/admin/user-groups/');
-      }
-      else {
-        return res.redirect('/admin/user-group-detail/' + userGroupId);
-      }
-    });
-  };
 
   // app.post('/_api/admin/user-group/delete' , admin.userGroup.removeCompletely);
   actions.userGroup.removeCompletely = function(req, res) {
     const id = req.body.user_group_id;
 
-    const fileUploader = require('../service/file-uploader')(crowi, app);
-
     UserGroup.removeCompletelyById(id)
-      //// TODO remove attachments
-      // couldn't remove because filePath includes '/uploads/uploads'
-      // Error: ENOENT: no such file or directory, unlink 'C:\dev\growi\public\uploads\uploads\userGroup\5b1df18ab69611651cc71495.png
-      //
-      // .then(removed => {
-      //   if (removed.image != null) {
-      //     fileUploader.deleteFile(null, removed.image);
-      //   }
-      // })
       .then(() => {
         req.flash('successMessage', '削除しました');
         return res.redirect('/admin/user-groups');
@@ -1015,6 +896,25 @@ module.exports = function(crowi, app) {
     }
   };
 
+  actions.api.asyncAppSetting = async(req, res) => {
+    const form = req.form.settingForm;
+
+    if (!req.form.isValid) {
+      return res.json({status: false, message: req.form.errors.join('\n')});
+    }
+
+    debug('form content', form);
+
+    try {
+      await crowi.configManager.updateConfigsInTheSameNamespace('crowi', form);
+      return res.json({status: true});
+    }
+    catch (err) {
+      logger.error(err);
+      return res.json({status: false});
+    }
+  };
+
   actions.api.securitySetting = function(req, res) {
     const form = req.form.settingForm;
     const config = crowi.getConfig();
@@ -1070,18 +970,19 @@ module.exports = function(crowi, app) {
   actions.api.securityPassportSamlSetting = async(req, res) => {
     const form = req.form.settingForm;
 
+    validateSamlSettingForm(req.form, req.t);
+
     if (!req.form.isValid) {
       return res.json({status: false, message: req.form.errors.join('\n')});
     }
 
     debug('form content', form);
-    await saveSettingAsync(form);
-    const config = await crowi.getConfig();
+    await crowi.configManager.updateConfigsInTheSameNamespace('crowi', form);
 
     // reset strategy
     await crowi.passportService.resetSamlStrategy();
     // setup strategy
-    if (Config.isEnabledPassportSaml(config)) {
+    if (crowi.configManager.getConfig('crowi', 'security:passport-saml:isEnabled')) {
       try {
         await crowi.passportService.setupSamlStrategy(true);
       }
@@ -1487,6 +1388,22 @@ module.exports = function(crowi, app) {
       subject: 'Wiki管理設定のアップデートによるメール通知',
       text: 'このメールは、WikiのSMTP設定のアップデートにより送信されています。'
     }, callback);
+  }
+
+  /**
+   * validate setting form values for SAML
+   *
+   * This validation checks, for the value of each mandatory items,
+   * whether it from the environment variables is empty and form value to update it is empty.
+   */
+  function validateSamlSettingForm(form, t) {
+    for (const key of crowi.passportService.mandatoryConfigKeysForSaml) {
+      const formValue = form.settingForm[key];
+      if (crowi.configManager.getConfigFromEnvVars('crowi', key) === null && formValue === '') {
+        const formItemName = t(`security_setting.form_item_name.${key}`);
+        form.errors.push(t('form_validation.required', formItemName));
+      }
+    }
   }
 
   return actions;

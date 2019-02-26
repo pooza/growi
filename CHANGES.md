@@ -1,9 +1,97 @@
 CHANGES
 ========
 
-## 3.3.4-RC
+## 3.4.0-RC
 
-* 
+* Improvement: Restrict to access attachments when the user is not allowed to see page
+* Improvement: Show fans and visitors of page
+* Fix: Profile image is not displayed when `FILE_UPLOAD=mongodb`
+* Support: Launch with Node.js v10
+* Support: Launch with MongoDB 3.6
+* Support: Launch with Elasticsearch 6.6
+
+## 3.3.10
+
+* Feature: PlantUML and Blockdiag on presentation
+* Improvement: Render slides of presentation with GrowiRenderer
+* Fix: Unportalizing doesn't work
+* Support: Use mini-css-extract-plugin instead of extract extract-text-webpack-plugin
+* Support: Use terser-webpack-plugin instead of uglifyjs-webpack-plugin
+* Support: Upgrade libs
+    * csv-to-markdown-table
+    * file-loader
+    * googleapis
+    * i18next-browser-languagedetector
+    * mocha
+    * react-waypoint
+    * webpack
+    * webpack-assets-manifest
+    * webpack-cli
+    * webpack-merge
+
+## 3.3.9
+
+* Fix: Import from Qiita:Team doesn't work
+    * Introduced by 3.3.0
+* Fix: Typeahead shows autocomplete wrongly
+    * Introduced by 3.3.8
+* Support: Upgrade libs
+    * react-bootstrap-typeahead
+
+## 3.3.8
+
+* Fix: Move/Duplicate don't work
+    * Introduced by 3.3.7
+* Fix: Server doesn't respond when root page is restricted
+* Support: Upgrade libs
+    * react
+    * react-bootstrap-typeahead
+
+## 3.3.7
+
+* Feature: Editor toolbar
+* Feature: `prefix:/path` searching syntax to filter with page path prefix
+* Feature: Add an option to filter only children to searching box of navbar
+* Improvement: Suggest page path when moving/duplicating/searching
+* Fix: Anonymous users couldn't search
+    * Introduced by 3.3.6
+* I18n: Searching help
+* Support: Prepare to suppoert Node.js v10
+* Support: Upgrade libs
+    * node-sass
+
+## 3.3.6
+
+* Improvement: Site URL settings must be set
+* Improvement: Site URL settings can be set with environment variable
+* Fix: "Anyone with the link" ACL doesn't work correctly
+    * Introduced by 3.3.0
+* Fix: Related pages list of /admin/user-group-detail/xxx doesn't show anything
+    * Introduced by 3.3.0
+* Fix: Diff of revision contents doesn't appeared when notifing with slack
+* Fix: NPE occured on /admin/security when Crowi Classic Auth Mechanism is set
+* Fix: Coudn't render Timing Diagram with PlantUML
+* I18n: Cheatsheet for editor
+* I18n: Some admin pages
+* Support: Upgrade libs
+    * diff
+    * markdown-it-plantuml
+    * mongoose
+    * nodemailer
+    * mongoose-gridfs
+    * sinon
+    * sinon-chai
+
+## 3.3.5 (Missing number)
+
+## 3.3.4
+
+* Improvement: SAML configuration with environment variables
+* Improvement: Upload file with pasting from clipboard
+* Fix: `/_api/revisions.get` doesn't populate author data correctly
+* Fix: Wrong OAuth callback url are shown at admin page
+* Fix: Connecting to MongoDB failed when processing migration
+* Support: Get ready to use new config management system
 
 ## 3.3.3
 
@@ -23,7 +111,7 @@ CHANGES
 ## 3.3.2
 
 * Fix: Specified Group ACL is not persisted correctly
-    * Introduced 3.3.0
+    * Introduced by 3.3.0
 
 ## 3.3.1
 

@@ -71,20 +71,25 @@
 
   <!-- styles -->
   {% block style_css_block %}
+    {% if env === 'development' %}
+      <script src="{{ webpack_asset('styles/style-commons.js') }}"></script>
+      <script src="{{ webpack_asset('styles/style-app.js') }}"></script>
+    {% else %}
+      <script src="{{ webpack_asset('styles/style-commons.js') }}"></script>
+      <link rel="stylesheet" href="{{ webpack_asset('styles/style-app.css') }}">
+    {% endif %}
+  {% endblock %}
+  {% block theme_css_block %}
     {% if 'kibela' === layoutType() %}
       {% if env === 'development' %}
-        <script src="{{ webpack_asset('styles/style.js') }}"></script>
         <script src="{{ webpack_asset('styles/theme-kibela.js') }}"></script>
       {% else %}
-        <link rel="stylesheet" href="{{ webpack_asset('styles/style.css') }}">
         <link rel="stylesheet" href="{{ webpack_asset('styles/theme-kibela.css') }}">
       {% endif %}
     {% else %}
       {% if env === 'development' %}
-        <script src="{{ webpack_asset('styles/style.js') }}"></script>
         <script src="{{ webpack_asset('styles/theme-' + theme() + '.js') }}"></script>
       {% else %}
-        <link rel="stylesheet" href="{{ webpack_asset('styles/style.css') }}">
         <link rel="stylesheet" href="{{ webpack_asset('styles/theme-' + theme() + '.css') }}">
       {% endif %}
     {% endif %}
@@ -117,7 +122,7 @@
 <div id="wrapper">
   <!-- Navigation -->
   {% block layout_head_nav %}
-  <nav class="navbar navbar-default navbar-static-top m-b-0">
+  <nav class="navbar navbar-default navbar-static-top mb-0">
     <div class="navbar-header">
       <a class="navbar-toggle hidden-sm hidden-md hidden-lg " href="javascript:void(0)" data-toggle="collapse" data-target=".navbar-collapse">
         <i class="ti-menu"></i>
@@ -194,6 +199,8 @@
   </nav>
   {% include '../modal/create_page.html' %}
   {% endblock  %} {# layout_head_nav #}
+
+  {% block head_warn %}{% endblock %}
 
   {% block sidebar %}
   <!-- Left navbar-header -->

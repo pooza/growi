@@ -1,6 +1,9 @@
+const multer = require('multer')
+const autoReap  = require('multer-autoreap');
+autoReap.options.reapOnError = true;  // continue reaping the file even if an error occurs
+
 module.exports = function(crowi, app) {
   const middleware = require('../util/middlewares')
-    , multer    = require('multer')
     , uploads   = multer({dest: crowi.tmpDir + 'uploads'})
     , form      = require('../form')
     , page      = require('./page')(crowi, app)
@@ -54,12 +57,13 @@ module.exports = function(crowi, app) {
   app.get('/login/google'            , login.loginGoogle);
   app.get('/logout'                  , logout.logout);
 
-  app.get('/admin'                      , loginRequired(crowi, app) , middleware.adminRequired() , admin.index);
-  app.get('/admin/app'                  , loginRequired(crowi, app) , middleware.adminRequired() , admin.app.index);
-  app.post('/_api/admin/settings/app'   , loginRequired(crowi, app) , middleware.adminRequired() , csrf, form.admin.app, admin.api.appSetting);
-  app.post('/_api/admin/settings/mail'  , loginRequired(crowi, app) , middleware.adminRequired() , csrf, form.admin.mail, admin.api.appSetting);
-  app.post('/_api/admin/settings/aws'   , loginRequired(crowi, app) , middleware.adminRequired() , csrf, form.admin.aws, admin.api.appSetting);
-  app.post('/_api/admin/settings/plugin', loginRequired(crowi, app) , middleware.adminRequired() , csrf, form.admin.plugin, admin.api.appSetting);
+  app.get('/admin'                          , loginRequired(crowi, app) , middleware.adminRequired() , admin.index);
+  app.get('/admin/app'                      , loginRequired(crowi, app) , middleware.adminRequired() , admin.app.index);
+  app.post('/_api/admin/settings/app'       , loginRequired(crowi, app) , middleware.adminRequired() , csrf, form.admin.app, admin.api.appSetting);
+  app.post('/_api/admin/settings/siteUrl'   , loginRequired(crowi, app) , middleware.adminRequired() , csrf, form.admin.siteUrl, admin.api.asyncAppSetting);
+  app.post('/_api/admin/settings/mail'      , loginRequired(crowi, app) , middleware.adminRequired() , csrf, form.admin.mail, admin.api.appSetting);
+  app.post('/_api/admin/settings/aws'       , loginRequired(crowi, app) , middleware.adminRequired() , csrf, form.admin.aws, admin.api.appSetting);
+  app.post('/_api/admin/settings/plugin'    , loginRequired(crowi, app) , middleware.adminRequired() , csrf, form.admin.plugin, admin.api.appSetting);
 
   // security admin
   app.get('/admin/security'                     , loginRequired(crowi, app) , middleware.adminRequired() , admin.security.index);
@@ -139,9 +143,7 @@ module.exports = function(crowi, app) {
   app.get('/admin/user-group-detail/:id'          , loginRequired(crowi, app), middleware.adminRequired(), admin.userGroup.detail);
   app.post('/admin/user-group/create'      , form.admin.userGroupCreate, loginRequired(crowi, app), middleware.adminRequired(), csrf, admin.userGroup.create);
   app.post('/admin/user-group/:userGroupId/update', loginRequired(crowi, app), middleware.adminRequired(), csrf, admin.userGroup.update);
-  app.post('/admin/user-group/:userGroupId/picture/delete', loginRequired(crowi, app), admin.userGroup.deletePicture);
   app.post('/admin/user-group.remove' , loginRequired(crowi, app), middleware.adminRequired(), csrf, admin.userGroup.removeCompletely);
-  app.post('/_api/admin/user-group/:userGroupId/picture/upload', loginRequired(crowi, app), uploads.single('userGroupPicture'), admin.userGroup.uploadGroupPicture);
 
   // user-group-relations admin
   app.post('/admin/user-group-relation/create', loginRequired(crowi, app), middleware.adminRequired(), csrf, admin.userGroupRelation.create);
@@ -169,20 +171,19 @@ module.exports = function(crowi, app) {
   app.post('/me/password'             , form.me.password          , loginRequired(crowi, app) , me.password);
   app.post('/me/imagetype'            , form.me.imagetype         , loginRequired(crowi, app) , me.imagetype);
   app.post('/me/apiToken'             , form.me.apiToken          , loginRequired(crowi, app) , me.apiToken);
-  app.post('/me/picture/delete'       , loginRequired(crowi, app) , me.deletePicture);
   app.post('/me/auth/google'          , loginRequired(crowi, app) , me.authGoogle);
   app.get( '/me/auth/google/callback' , loginRequired(crowi, app) , me.authGoogleCallback);
 
   app.get( '/:id([0-9a-z]{24})'       , loginRequired(crowi, app, false) , page.redirector);
   app.get( '/_r/:id([0-9a-z]{24})'    , loginRequired(crowi, app, false) , page.redirector); // alias
-  app.get( '/download/:id([0-9a-z]{24})' , loginRequired(crowi, app, false) , attachment.api.download);
-  app.get( '/attachment/:pageId/:fileName'  , loginRequired(crowi, app, false), attachment.api.get);
+  app.get( '/attachment/:pageId/:fileName'  , loginRequired(crowi, app, false), attachment.api.obsoletedGetForMongoDB); // DEPRECATED: remains for backward compatibility for v3.3.x or below
+  app.get( '/attachment/:id([0-9a-z]{24})'  , loginRequired(crowi, app, false), attachment.api.get);
+  app.get( '/download/:id([0-9a-z]{24})'    , loginRequired(crowi, app, false), attachment.api.download);
 
   app.get( '/_search'                 , loginRequired(crowi, app, false) , search.searchPage);
   app.get( '/_api/search'             , accessTokenParser , loginRequired(crowi, app, false) , search.api.search);
 
   app.get( '/_api/check_username'           , user.api.checkUsername);
-  app.post('/_api/me/picture/upload'        , loginRequired(crowi, app) , uploads.single('userPicture'), me.api.uploadPicture);
   app.get( '/_api/me/user-group-relations'  , accessTokenParser , loginRequired(crowi, app) , me.api.userGroupRelations);
   app.get( '/_api/user/bookmarks'           , loginRequired(crowi, app, false) , user.api.bookmarks);
 
@@ -210,9 +211,10 @@ module.exports = function(crowi, app) {
   app.post('/_api/likes.add'          , accessTokenParser , loginRequired(crowi, app) , csrf, page.api.like);
   app.post('/_api/likes.remove'       , accessTokenParser , loginRequired(crowi, app) , csrf, page.api.unlike);
   app.get( '/_api/attachments.list'   , accessTokenParser , loginRequired(crowi, app, false) , attachment.api.list);
-  app.post('/_api/attachments.add'    , uploads.single('file'), accessTokenParser, loginRequired(crowi, app) ,csrf, attachment.api.add);
+  app.post('/_api/attachments.add'                  , uploads.single('file'), autoReap, accessTokenParser, loginRequired(crowi, app) ,csrf, attachment.api.add);
+  app.post('/_api/attachments.uploadProfileImage'   , uploads.single('file'), autoReap, accessTokenParser, loginRequired(crowi, app) ,csrf, attachment.api.uploadProfileImage);
   app.post('/_api/attachments.remove' , accessTokenParser , loginRequired(crowi, app) , csrf, attachment.api.remove);
-  app.get( '/_api/attachments.limit' , accessTokenParser , loginRequired(crowi, app) , csrf, attachment.api.limit);
+  app.get( '/_api/attachments.limit'  , accessTokenParser , loginRequired(crowi, app) , csrf, attachment.api.limit);
 
   app.get( '/_api/revisions.get'      , accessTokenParser , loginRequired(crowi, app, false) , revision.api.get);
   app.get( '/_api/revisions.ids'      , accessTokenParser , loginRequired(crowi, app, false) , revision.api.ids);

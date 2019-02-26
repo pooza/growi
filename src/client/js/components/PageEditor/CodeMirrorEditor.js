@@ -44,6 +44,9 @@ require('../../util/codemirror/autorefresh.ext');
 
 import AbstractEditor from './AbstractEditor';
 
+import SimpleCheatsheet from './SimpleCheatsheet';
+import Cheatsheet from './Cheatsheet';
+
 import pasteHelper from './PasteHelper';
 import EmojiAutoCompleteHelper from './EmojiAutoCompleteHelper';
 
@@ -92,6 +95,7 @@ export default class CodeMirrorEditor extends AbstractEditor {
     this.renderLoadingKeymapOverlay = this.renderLoadingKeymapOverlay.bind(this);
     this.renderCheatsheetModalButton = this.renderCheatsheetModalButton.bind(this);
 
+    this.makeHeaderHandler = this.makeHeaderHandler.bind(this);
     this.showHandsonTableHandler = this.showHandsonTableHandler.bind(this);
   }
 
@@ -461,14 +465,16 @@ export default class CodeMirrorEditor extends AbstractEditor {
   pasteHandler(editor, event) {
     const types = event.clipboardData.types;
 
-    // text
-    if (types.includes('text/plain')) {
-      pasteHelper.pasteText(this, event);
-    }
     // files
-    else if (types.includes('Files')) {
+    if (types.includes('Files')) {
+      event.preventDefault();
       this.dispatchPasteFiles(event);
     }
+    // text
+    else if (types.includes('text/plain')) {
+      pasteHelper.pasteText(this, event);
+    }
+
   }
 
   /**
@@ -508,130 +514,11 @@ export default class CodeMirrorEditor extends AbstractEditor {
   }
 
   renderSimpleCheatsheet() {
-    return (
-      <div className="panel panel-default gfm-cheatsheet mb-0">
-        <div className="panel-body small p-b-0">
-          <div className="row">
-            <div className="col-xs-6">
-              <p>
-                # 見出し1<br />
-                ## 見出し2
-              </p>
-              <p><i>*斜体*</i>&nbsp;&nbsp;<b>**強調**</b></p>
-              <p>
-                [リンク](http://..)<br />
-                [/ページ名/子ページ名]
-              </p>
-              <p>
-                ```javascript:index.js<br />
-                writeCode();<br />
-                ```
-              </p>
-            </div>
-            <div className="col-xs-6">
-              <p>
-                - リスト 1<br />
-                &nbsp;&nbsp;&nbsp;&nbsp;- リスト 1_1<br />
-                - リスト 2<br />
-                1. 番号付きリスト 1<br />
-                1. 番号付きリスト 2
-              </p>
-              <hr />
-              <p>行末にスペース2つ[ ][ ]<br />で改行</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+    return <SimpleCheatsheet />;
   }
 
   renderCheatsheetModalBody() {
-    return (
-      <div className="row small">
-        <div className="col-sm-6">
-          <h4>Header</h4>
-          <ul className="hljs">
-            <li><code># </code>見出し1</li>
-            <li><code>## </code>見出し2</li>
-            <li><code>### </code>見出し3</li>
-          </ul>
-          <h4>Block</h4>
-          <p className="mb-1"><code>[空白行]</code>を挟むことで段落になります</p>
-          <ul className="hljs">
-            <li>text</li>
-            <li></li>
-            <li>text</li>
-          </ul>
-          <h4>Line breaks</h4>
-          <p className="mb-1">段落中、<code>[space][space]</code>(スペース2つ) で改行されます</p>
-          <ul className="hljs">
-            <li>text<code> </code><code> </code></li>
-            <li>text</li>
-          </ul>
-          <h4>Typography</h4>
-          <ul className="hljs">
-            <li><i>*イタリック*</i></li>
-            <li><b>**ボールド**</b></li>
-            <li><i><b>***イタリックボールド***</b></i></li>
-            <li>~~取り消し線~~ => <s>striked text</s></li>
-          </ul>
-          <h4>Link</h4>
-          <ul className="hljs">
-            <li>[Google](https://www.google.co.jp/)</li>
-            <li>[/Page1/ChildPage1]</li>
-          </ul>
-          <h4>コードハイライト</h4>
-          <ul className="hljs">
-            <li>```javascript:index.js</li>
-            <li>writeCode();</li>
-            <li>```</li>
-          </ul>
-        </div>
-        <div className="col-sm-6">
-          <h4>リスト</h4>
-          <ul className="hljs">
-            <li>- リスト 1</li>
-            <li>&nbsp;&nbsp;- リスト 1_1</li>
-            <li>- リスト 2</li>
-          </ul>
-          <ul className="hljs">
-            <li>1. 番号付きリスト 1</li>
-            <li>1. 番号付きリスト 2</li>
-          </ul>
-          <ul className="hljs">
-            <li>- [ ] タスク(チェックなし)</li>
-            <li>- [x] タスク(チェック付き)</li>
-          </ul>
-          <h4>引用</h4>
-          <ul className="hljs">
-            <li>> 複数行の引用文を</li>
-            <li>> 書くことができます</li>
-          </ul>
-          <ul className="hljs">
-            <li>>> 多重引用</li>
-            <li>>>> 多重引用</li>
-            <li>>>>> 多重引用</li>
-          </ul>
-          <h4>Table</h4>
-          <ul className="hljs text-center">
-            <li>|&nbsp;&nbsp;&nbsp;左寄せ&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;中央寄せ&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;右寄せ&nbsp;&nbsp;&nbsp;|</li>
-            <li>|:-----------|:----------:|-----------:|</li>
-            <li>|column 1&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;column 2&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;column 3|</li>
-            <li>|column 1&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;column 2&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;column 3|</li>
-          </ul>
-          <h4>Images</h4>
-          <p className="mb-1"><code> ![Alt文字列](URL)</code> で<span className="text-info">&lt;img&gt;</span>タグを挿入できます</p>
-          <ul className="hljs">
-            <li>![ex](https://example.com/images/a.png)</li>
-          </ul>
-
-          <hr />
-          <a href="/Sandbox" className="btn btn-info btn-block" target="_blank">
-            <i className="icon-share-alt"/> Sandbox を開く
-          </a>
-        </div>
-      </div>
-    );
+    return <Cheatsheet />;
   }
 
   renderCheatsheetModalButton() {
@@ -661,12 +548,133 @@ export default class CodeMirrorEditor extends AbstractEditor {
     );
   }
 
+  /**
+   * return a function to replace a selected range with prefix + selection + suffix
+   *
+   * The cursor after replacing is inserted between the selection and the suffix.
+   */
+  createReplaceSelectionHandler(prefix, suffix) {
+    return () => {
+      const cm = this.getCodeMirror();
+      const selection = cm.getDoc().getSelection();
+      const curStartPos = cm.getCursor('from');
+      const curEndPos = cm.getCursor('to');
+
+      const curPosAfterReplacing = {};
+      curPosAfterReplacing.line = curEndPos.line;
+      if (curStartPos.line === curEndPos.line) {
+        curPosAfterReplacing.ch = curEndPos.ch + prefix.length;
+      }
+      else {
+        curPosAfterReplacing.ch = curEndPos.ch;
+      }
+
+      cm.getDoc().replaceSelection(prefix + selection + suffix);
+      cm.setCursor(curPosAfterReplacing);
+      cm.focus();
+    };
+  }
+
+  /**
+   * return a function to add prefix to selected each lines
+   *
+   * The cursor after editing is inserted between the end of the selection.
+   */
+  createAddPrefixToEachLinesHandler(prefix) {
+    return () => {
+      const cm = this.getCodeMirror();
+      const startLineNum = cm.getCursor('from').line;
+      const endLineNum = cm.getCursor('to').line;
+
+      const lines = [];
+      for (let i = startLineNum; i <= endLineNum; i++) {
+        lines.push(prefix + cm.getDoc().getLine(i));
+      }
+      const replacement = lines.join('\n') + '\n';
+      cm.getDoc().replaceRange(replacement, {line: startLineNum, ch: 0}, {line: endLineNum + 1, ch: 0});
+
+      cm.setCursor(endLineNum, cm.getDoc().getLine(endLineNum).length);
+      cm.focus();
+    };
+  }
+
+  /**
+   * make a selected line a header
+   *
+   * The cursor after editing is inserted between the end of the line.
+   */
+  makeHeaderHandler() {
+    const cm = this.getCodeMirror();
+    const lineNum = cm.getCursor('from').line;
+    const line = cm.getDoc().getLine(lineNum);
+    let prefix = '#';
+    if (!line.startsWith('#')) {
+      prefix += ' ';
+    }
+    cm.getDoc().replaceRange(prefix, {line: lineNum, ch: 0}, {line: lineNum, ch: 0});
+    cm.focus();
+  }
+
   showHandsonTableHandler() {
     this.refs.handsontableModal.show(mtu.getMarkdownTable(this.getCodeMirror()));
   }
 
   getNavbarItems() {
-    return <Button bsSize="small" onClick={ this.showHandsonTableHandler }><img src="/images/icons/editor/table.svg" width="14" /></Button>;
+    // The following styles will be removed after creating icons for the editor navigation bar.
+    const paddingTopBottom54 = {'paddingTop': '6px', 'paddingBottom': '5px'};
+    const paddingBottom6 = {'paddingBottom': '7px'};
+    const fontSize18 = {'fontSize': '18px'};
+
+    return [
+      <Button key='nav-item-bold' bsSize="small" title={'Bold'}
+              onClick={ this.createReplaceSelectionHandler('**', '**') }>
+        <i className={'fa fa-bold'}></i>
+      </Button>,
+      <Button key='nav-item-italic' bsSize="small" title={'Italic'}
+              onClick={ this.createReplaceSelectionHandler('*', '*') }>
+        <i className={'fa fa-italic'}></i>
+      </Button>,
+      <Button key='nav-item-strikethough' bsSize="small" title={'Strikethrough'}
+              onClick={ this.createReplaceSelectionHandler('~~', '~~') }>
+        <i className={'fa fa-strikethrough'}></i>
+      </Button>,
+      <Button key='nav-item-header' bsSize="small" title={'Heading'}
+              onClick={ this.makeHeaderHandler }>
+        <i className={'fa fa-header'}></i>
+      </Button>,
+      <Button key='nav-item-code' bsSize="small" title={'Inline Code'}
+              onClick={ this.createReplaceSelectionHandler('`', '`') }>
+        <i className={'fa fa-code'}></i>
+      </Button>,
+      <Button key='nav-item-quote' bsSize="small" title={'Quote'}
+              onClick={ this.createAddPrefixToEachLinesHandler('> ') } style={paddingBottom6}>
+        <i className={'ti-quote-right'}></i>
+      </Button>,
+      <Button key='nav-item-ul' bsSize="small" title={'List'}
+              onClick={ this.createAddPrefixToEachLinesHandler('- ') } style={paddingTopBottom54}>
+        <i className={'ti-list'} style={fontSize18}></i>
+      </Button>,
+      <Button key='nav-item-ol' bsSize="small" title={'Numbered List'}
+              onClick={ this.createAddPrefixToEachLinesHandler('1. ') } style={paddingTopBottom54}>
+        <i className={'ti-list-ol'} style={fontSize18}></i>
+      </Button>,
+      <Button key='nav-item-checkbox' bsSize="small" title={'Check List'}
+              onClick={ this.createAddPrefixToEachLinesHandler('- [ ] ') } style={paddingBottom6}>
+        <i className={'ti-check-box'}></i>
+      </Button>,
+      <Button key='nav-item-link' bsSize="small" title={'Link'}
+              onClick={ this.createReplaceSelectionHandler('[', ']()') } style={paddingBottom6}>
+        <i className={'icon-link'}></i>
+      </Button>,
+      <Button key='nav-item-image' bsSize="small" title={'Image'}
+              onClick={ this.createReplaceSelectionHandler('![', ']()') } style={paddingBottom6}>
+        <i className={'icon-picture'}></i>
+      </Button>,
+      <Button key='nav-item-table' bsSize="small" title={'Table'}
+              onClick={ this.showHandsonTableHandler }>
+        <img src="/images/icons/editor/table.svg" width="14" height="14" />
+      </Button>
+    ];
   }
 
   render() {

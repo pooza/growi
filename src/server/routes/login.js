@@ -106,7 +106,7 @@ module.exports = function(crowi, app) {
   };
 
   actions.loginGoogle = function(req, res) {
-    var googleAuth = require('../util/googleAuth')(config);
+    var googleAuth = require('../util/googleAuth')(crowi);
     var code = req.session.googleAuthCode || null;
 
     if (!code) {
@@ -140,7 +140,7 @@ module.exports = function(crowi, app) {
   };
 
   actions.register = function(req, res) {
-    var googleAuth = require('../util/googleAuth')(config);
+    var googleAuth = require('../util/googleAuth')(crowi);
 
     // ログイン済みならさようなら
     if (req.user) {
@@ -212,7 +212,7 @@ module.exports = function(crowi, app) {
                       vars: {
                         createdUser: userData,
                         adminUser: adminUser,
-                        url: config.crowi['app:siteUrl:fixed'],
+                        url: crowi.configManager.getSiteUrl(),
                         appTitle: appTitle,
                       }
                     },
@@ -235,37 +235,6 @@ module.exports = function(crowi, app) {
                 }
                 return loginSuccess(req, res, userData);
               });
-
-              if (googleImage) {
-                var axios = require('axios');
-                var fileUploader = require('../service/file-uploader')(crowi, app);
-                var filePath = User.createUserPictureFilePath(
-                  userData,
-                  googleImage.replace(/^.+\/(.+\..+)$/, '$1')
-                );
-
-                axios.get(googleImage, {responseType: 'stream'})
-                .then(function(response) {
-                  var type = response.headers['content-type'];
-                  var fileStream = response.data;
-                  fileStream.length = parseInt(response.headers['content-length']);
-
-                  fileUploader.uploadFile(filePath, type, fileStream, {})
-                  .then(function(data) {
-                    var imageUrl = fileUploader.generateUrl(filePath);
-                    debug('user picture uploaded', imageUrl);
-                    userData.updateImage(imageUrl, function(err, data) {
-                      if (err) {
-                        debug('Error on update user image', err);
-                      }
-                      // DONE
-                    });
-                  }).catch(function(err) { // ignore
-                    debug('Upload error', err);
-                  });
-                }).catch(function() { // ignore
-                });
-              }
             }
             else {
               // add a flash message to inform the user that processing was successful -- 2017.09.23 Yuki Takei
@@ -321,7 +290,7 @@ module.exports = function(crowi, app) {
   };
 
   actions.registerGoogle = function(req, res) {
-    var googleAuth = require('../util/googleAuth')(config);
+    var googleAuth = require('../util/googleAuth')(crowi);
     googleAuth.createAuthUrl(req, function(err, redirectUrl) {
       if (err) {
         // TODO

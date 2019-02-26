@@ -1,25 +1,28 @@
+const debug = require('debug')('growi:models:user');
+const logger = require('@alias/logger')('growi:models:user');
+const path = require('path');
+const mongoose = require('mongoose');
+const uniqueValidator = require('mongoose-unique-validator');
+const mongoosePaginate = require('mongoose-paginate');
+const ObjectId = mongoose.Schema.Types.ObjectId;
+const crypto = require('crypto');
+const async = require('async');
+
 module.exports = function(crowi) {
-  const debug = require('debug')('growi:models:user')
-    , path = require('path')
-    , mongoose = require('mongoose')
-    , mongoosePaginate = require('mongoose-paginate')
-    , uniqueValidator = require('mongoose-unique-validator')
-    , crypto = require('crypto')
-    , async = require('async')
+  const STATUS_REGISTERED = 1;
+  const STATUS_ACTIVE     = 2;
+  const STATUS_SUSPENDED  = 3;
+  const STATUS_DELETED    = 4;
+  const STATUS_INVITED    = 5;
+  const USER_PUBLIC_FIELDS = '_id image isEmailPublished isGravatarEnabled googleId name username email introduction status lang createdAt admin';
+  const IMAGE_POPULATION = { path: 'imageAttachment', select: 'filePathProxied' };
 
-    , STATUS_REGISTERED = 1
-    , STATUS_ACTIVE     = 2
-    , STATUS_SUSPENDED  = 3
-    , STATUS_DELETED    = 4
-    , STATUS_INVITED    = 5
-    , USER_PUBLIC_FIELDS = '_id image isEmailPublished isGravatarEnabled googleId name username email introduction status lang createdAt admin' // TODO: どこか別の場所へ...
+  const LANG_EN    = 'en';
+  const LANG_EN_US = 'en-US';
+  const LANG_EN_GB = 'en-GB';
+  const LANG_JA    = 'ja';
 
-    , LANG_EN    = 'en'
-    , LANG_EN_US = 'en-US'
-    , LANG_EN_GB = 'en-GB'
-    , LANG_JA    = 'ja'
-
-    , PAGE_ITEMS        = 50
+  const PAGE_ITEMS = 50;
 
   let userSchema;
   let userEvent;
@@ -33,6 +36,7 @@ module.exports = function(crowi) {
   userSchema = new mongoose.Schema({
     userId: String,
     image: String,
+    imageAttachment: { type: ObjectId, ref: 'Attachment' },
     isGravatarEnabled: { type: Boolean, default: false },
     isEmailPublished: { type: Boolean, default: true },
     googleId: String,
@@ -132,6 +136,10 @@ module.exports = function(crowi) {
     return lang;
   }
 
+  userSchema.methods.populateImage = async function() {
+    return await this.populate(IMAGE_POPULATION);
+  };
+
   userSchema.methods.isPasswordSet = function() {
     if (this.password) {
       return true;
@@ -169,7 +177,6 @@ module.exports = function(crowi) {
     });
   };
 
-
   userSchema.methods.updateIsEmailPublished = function(isEmailPublished, callback) {
     this.isEmailPublished = isEmailPublished;
     this.save(function(err, userData) {
@@ -201,15 +208,24 @@ module.exports = function(crowi) {
     });
   };
 
-  userSchema.methods.updateImage = function(image, callback) {
-    this.image = image;
-    this.save(function(err, userData) {
-      return callback(err, userData);
-    });
+  userSchema.methods.updateImage = async function(attachment) {
+    this.imageAttachment = attachment;
+    return this.save();
   };
 
-  userSchema.methods.deleteImage = function(callback) {
-    return this.updateImage(null, callback);
+  userSchema.methods.deleteImage = async function() {
+    validateCrowi();
+    const Attachment = crowi.model('Attachment');
+
+    // the 'image' field became DEPRECATED in v3.3.8
+    this.image = undefined;
+
+    if (this.imageAttachment != null) {
+      Attachment.removeWithSubstance(this.imageAttachment._id);
+    }
+
+    this.imageAttachment = undefined;
+    return this.save();
   };
 
   userSchema.methods.updateGoogleId = function(googleId, callback) {
@@ -366,55 +382,33 @@ module.exports = function(crowi) {
   };
 
   userSchema.statics.findAllUsers = function(option) {
-    var User = this;
-    var option = option || {}
-      , sort = option.sort || {createdAt: -1}
-      , status = option.status || [STATUS_ACTIVE, STATUS_SUSPENDED]
-      , fields = option.fields || USER_PUBLIC_FIELDS
-      ;
+    option = option || {};
 
+    const sort = option.sort || {createdAt: -1};
+    const fields = option.fields || USER_PUBLIC_FIELDS;
+
+    let status = option.status || [STATUS_ACTIVE, STATUS_SUSPENDED];
     if (!Array.isArray(status)) {
       status = [status];
     }
 
-    return new Promise(function(resolve, reject) {
-      User
-        .find()
-        .or(status.map(s => { return {status: s} }))
-        .select(fields)
-        .sort(sort)
-        .exec(function(err, userData) {
-          if (err) {
-            return reject(err);
-          }
-
-          return resolve(userData);
-        });
-    });
+    return this.find()
+      .or(status.map(s => { return {status: s} }))
+      .select(fields)
+      .sort(sort);
   };
 
   userSchema.statics.findUsersByIds = function(ids, option) {
-    var User = this;
-    var option = option || {}
-      , sort = option.sort || {createdAt: -1}
+    option = option || {};
+
+    const sort = option.sort || {createdAt: -1}
       , status = option.status || STATUS_ACTIVE
       , fields = option.fields || USER_PUBLIC_FIELDS
       ;
 
-
-    return new Promise(function(resolve, reject) {
-      User
-        .find({ _id: { $in: ids }, status: status })
-        .select(fields)
-        .sort(sort)
-        .exec(function(err, userData) {
-          if (err) {
-            return reject(err);
-          }
-
-          return resolve(userData);
-        });
-    });
+    return this.find({ _id: { $in: ids }, status: status })
+      .select(fields)
+      .sort(sort);
   };
 
   userSchema.statics.findAdmins = function(callback) {
@@ -706,7 +700,7 @@ module.exports = function(crowi) {
                 vars: {
                   email: user.email,
                   password: user.password,
-                  url: config.crowi['app:siteUrl:fixed'],
+                  url: crowi.configManager.getSiteUrl(),
                   appTitle: Config.appTitle(config),
                 }
               },
@@ -767,7 +761,7 @@ module.exports = function(crowi) {
 
     newUser.save(function(err, userData) {
       if (err) {
-        debug('createUserByEmailAndPassword failed: ', err);
+        logger.error('createUserByEmailAndPasswordAndStatus failed: ', err);
         return callback(err);
       }
 
@@ -804,12 +798,6 @@ module.exports = function(crowi) {
     });
   };
 
-  userSchema.statics.createUserPictureFilePath = function(user, name) {
-    var ext = '.' + name.match(/(.*)(?:\.([^.]+$))/)[2];
-
-    return 'user/' + user._id + ext;
-  };
-
   userSchema.statics.getUsernameByPath = function(path) {
     var username = null;
     if (m = path.match(/^\/user\/([^\/]+)\/?/)) {
@@ -831,6 +819,7 @@ module.exports = function(crowi) {
   userSchema.statics.STATUS_DELETED     = STATUS_DELETED;
   userSchema.statics.STATUS_INVITED     = STATUS_INVITED;
   userSchema.statics.USER_PUBLIC_FIELDS = USER_PUBLIC_FIELDS;
+  userSchema.statics.IMAGE_POPULATION   = IMAGE_POPULATION;
   userSchema.statics.PAGE_ITEMS         = PAGE_ITEMS;
 
   userSchema.statics.LANG_EN            = LANG_EN;
