@@ -57,8 +57,8 @@ const pageSchema = new mongoose.Schema({
   pageIdOnHackmd: String,
   revisionHackmdSynced: { type: ObjectId, ref: 'Revision' }, // the revision that is synced to HackMD
   hasDraftOnHackmd: { type: Boolean }, // set true if revision and revisionHackmdSynced are same but HackMD document has modified
-  createdAt: { type: Date, default: Date.now() },
-  updatedAt: { type: Date, default: Date.now() },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now },
 }, {
   toJSON: { getters: true },
   toObject: { getters: true },
@@ -353,6 +353,12 @@ module.exports = function(crowi) {
     return (this.latestRevision == this.revision._id.toString());
   };
 
+  pageSchema.methods.findRelatedTagsById = async function() {
+    const PageTagRelation = mongoose.model('PageTagRelation');
+    const relations = await PageTagRelation.find({ relatedPage: this._id }).populate('relatedTag');
+    return relations.map((relation) => { return relation.relatedTag.name });
+  };
+
   pageSchema.methods.isUpdatable = function(previousRevision) {
     const revision = this.latestRevision || this.revision;
     // comparing ObjectId with string
@@ -573,7 +579,7 @@ module.exports = function(crowi) {
       /\s+\/\s+/, // avoid miss in renaming
       /.+\/edit$/,
       /.+\.md$/,
-      /^\/(installer|register|login|logout|admin|me|files|trash|paste|comments)(\/.*|$)/,
+      /^\/(installer|register|login|logout|admin|me|files|trash|paste|comments|tags)(\/.*|$)/,
     ];
 
     let isCreatable = true;
@@ -910,8 +916,9 @@ module.exports = function(crowi) {
     return assignDecendantsTemplate(decendantsTemplates, newPath);
   };
 
-  const fetchTemplate = (templates, templatePath) => {
+  const fetchTemplate = async(templates, templatePath) => {
     let templateBody;
+    let templateTags;
     /**
      * get children template
      * __tempate: applicable only to immediate decendants
@@ -926,12 +933,14 @@ module.exports = function(crowi) {
 
     if (childrenTemplate) {
       templateBody = childrenTemplate.revision.body;
+      templateTags = await childrenTemplate.findRelatedTagsById();
     }
     else if (decendantsTemplate) {
       templateBody = decendantsTemplate.revision.body;
+      templateTags = await decendantsTemplate.findRelatedTagsById();
     }
 
-    return templateBody;
+    return { templateBody, templateTags };
   };
 
   /**
@@ -1300,6 +1309,52 @@ module.exports = function(crowi) {
     }));
     pageData.path = newPagePathPrefix;
     return pageData;
+  };
+
+  pageSchema.statics.handlePrivatePagesForDeletedGroup = async function(deletedGroup, action, selectedGroupId) {
+    const Page = mongoose.model('Page');
+
+    const pages = await this.find({ grantedGroup: deletedGroup });
+
+    switch (action) {
+      case 'public':
+        await Promise.all(pages.map((page) => {
+          return Page.publicizePage(page);
+        }));
+        break;
+      case 'delete':
+        await Promise.all(pages.map((page) => {
+          return Page.completelyDeletePage(page);
+        }));
+        break;
+      case 'transfer':
+        await Promise.all(pages.map((page) => {
+          return Page.transferPageToGroup(page, selectedGroupId);
+        }));
+        break;
+      default:
+        throw new Error('Unknown action for private pages');
+    }
+  };
+
+  pageSchema.statics.publicizePage = async function(page) {
+    page.grantedGroup = null;
+    page.grant = GRANT_PUBLIC;
+    await page.save();
+  };
+
+  pageSchema.statics.transferPageToGroup = async function(page, selectedGroupId) {
+    const UserGroup = mongoose.model('UserGroup');
+
+    // check page existence
+    const isExist = await UserGroup.count({ _id: selectedGroupId }) > 0;
+    if (isExist) {
+      page.grantedGroup = selectedGroupId;
+      await page.save();
+    }
+    else {
+      throw new Error('Cannot find the group to which private pages belong to. _id: ', selectedGroupId);
+    }
   };
 
   /**

@@ -37,7 +37,19 @@ module.exports = function(crowi, app) {
     const jumpTo = req.session.jumpTo;
     if (jumpTo) {
       req.session.jumpTo = null;
-      return res.redirect(jumpTo);
+
+      // prevention from open redirect
+      try {
+        const redirectUrl = new URL(jumpTo, `${req.protocol}://${req.get('host')}`);
+        if (redirectUrl.hostname === req.hostname) {
+          return res.redirect(redirectUrl);
+        }
+        logger.warn('Requested redirect URL is invalid, redirect to root page');
+      }
+      catch (err) {
+        logger.warn('Requested redirect URL is invalid, redirect to root page', err);
+        return res.redirect('/');
+      }
     }
 
     return res.redirect('/');
@@ -139,8 +151,10 @@ module.exports = function(crowi, app) {
   actions.register = function(req, res) {
     const googleAuth = require('../util/googleAuth')(crowi);
 
-    // ログイン済みならさようなら
-    if (req.user) {
+    // redirect to '/' if both of these are true:
+    //  1. user has logged in
+    //  2. req.user is not username/email string (which is set by basic-auth-connect)
+    if (req.user != null && req.user instanceof Object) {
       return res.redirect('/');
     }
 

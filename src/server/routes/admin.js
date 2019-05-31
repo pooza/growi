@@ -780,19 +780,19 @@ module.exports = function(crowi, app) {
 
 
   // app.post('/_api/admin/user-group/delete' , admin.userGroup.removeCompletely);
-  actions.userGroup.removeCompletely = function(req, res) {
-    const id = req.body.user_group_id;
+  actions.userGroup.removeCompletely = async(req, res) => {
+    const { deleteGroupId, actionName, selectedGroupId } = req.body;
 
-    UserGroup.removeCompletelyById(id)
-      .then(() => {
-        req.flash('successMessage', '削除しました');
-        return res.redirect('/admin/user-groups');
-      })
-      .catch((err) => {
-        debug('Error while removing userGroup.', err, id);
-        req.flash('errorMessage', '完全な削除に失敗しました。');
-        return res.redirect('/admin/user-groups');
-      });
+    try {
+      await UserGroup.removeCompletelyById(deleteGroupId, actionName, selectedGroupId);
+      req.flash('successMessage', '削除しました');
+    }
+    catch (err) {
+      debug('Error while removing userGroup.', err, deleteGroupId);
+      req.flash('errorMessage', '完全な削除に失敗しました。');
+    }
+
+    return res.redirect('/admin/user-groups');
   };
 
   actions.userGroupRelation = {};
@@ -906,7 +906,11 @@ module.exports = function(crowi, app) {
     }
   };
 
-  actions.api.securitySetting = function(req, res) {
+  actions.api.securitySetting = async function(req, res) {
+    if (!req.form.isValid) {
+      return res.json({ status: false, message: req.form.errors.join('\n') });
+    }
+
     const form = req.form.settingForm;
     const config = crowi.getConfig();
     const isPublicWikiOnly = Config.isPublicWikiOnly(config);
@@ -924,12 +928,14 @@ module.exports = function(crowi, app) {
       }
     }
 
-    if (req.form.isValid) {
-      debug('form content', form);
-      return saveSetting(req, res, form);
+    try {
+      await crowi.configManager.updateConfigsInTheSameNamespace('crowi', form);
+      return res.json({ status: true });
     }
-
-    return res.json({ status: false, message: req.form.errors.join('\n') });
+    catch (err) {
+      logger.error(err);
+      return res.json({ status: false });
+    }
   };
 
   actions.api.securityPassportLdapSetting = function(req, res) {
@@ -1319,6 +1325,17 @@ module.exports = function(crowi, app) {
       });
 
     return res.json(ApiResponse.success());
+  };
+
+  actions.api.userGroups = async(req, res) => {
+    try {
+      const userGroups = await UserGroup.find();
+      return res.json(ApiResponse.success({ userGroups }));
+    }
+    catch (err) {
+      logger.error('Error', err);
+      return res.json(ApiResponse.error('Error'));
+    }
   };
 
   /**

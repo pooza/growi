@@ -1,6 +1,33 @@
 # CHANGES
 
-## 3.4.5-RC
+## 3.4.7-RC
+
+* Improvement: Handle private pages on group deletion
+* Fix: Searching with `tag:xxx` syntax doesn't work
+* Fix: Check CSRF when updating user data
+* Fix: `createdAt` field initialization
+* I18n: Import data page
+* I18n: Group Management page
+
+## 3.4.6
+
+* Feature: Tags
+* Feature: Dropdown to copy page path/URL/MarkdownLink
+* Feature: List of drafts
+* Improvement: Replace icons of Editor Tool Bar
+* Improvement: Show display name when mouse hover to user image
+* Fix: URL in slack message is broken on Safari
+* Fix: Registration does not work when basic auth is enabled
+* Support: Publish API docs with swagger-jsdoc and ReDoc
+* Support: Upgrade libs
+    * cmd-env
+    * elasticsearch
+    * mongoose-gridfs
+    * node-dev
+    * null-loader
+    * react-codemirror
+
+## 3.4.5
 
 * Improvement: Pass autolink through the XSS filter according to CommonMark Spec
 * Fix: Update ElasticSearch index when deleting/duplicating pages
