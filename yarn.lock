@@ -5137,22 +5137,16 @@ graceful-fs@^4.1.15:
   version "4.1.15"
   resolved "https://registry.yarnpkg.com/graceful-fs/-/graceful-fs-4.1.15.tgz#ffb703e1066e8a0eeaa4c8b80ba9253eeefbfb00"
 
-growi-commons@^4.0.0:
-  version "4.0.2"
-  resolved "https://registry.yarnpkg.com/growi-commons/-/growi-commons-4.0.2.tgz#cd1ea0e56d70724383f884ead7f52db80024535f"
-  integrity sha512-HF5dti3JBgcDT6n1q9h5t3Txmh+FHGB15Mw5XMJ4/j1VKkKfvSN2hZ0KwSmHsx0z2LCbTyvbRb6+qhymyCNd3w==
-
 growi-commons@^4.0.1:
   version "4.0.1"
   resolved "https://registry.yarnpkg.com/growi-commons/-/growi-commons-4.0.1.tgz#e0e71c9c286f493e11c0703c809385bcdc6a97a9"
   integrity sha512-haH4Av1WuQIHic4Jv2RRwDprbKecRKF/3C0wVk9ssBzWtB3V6Oghj5gksajDpYOd7tOKdvkVEqqkFfIV4JQUyQ==
 
-growi-plugin-lsx@^2.2.0:
-  version "2.2.0"
-  resolved "https://registry.yarnpkg.com/growi-plugin-lsx/-/growi-plugin-lsx-2.2.0.tgz#7595d535a5edc92d04d81df66b36f62609206456"
-  integrity sha512-qqn3bXR8WHMIe6jZTMEWzG52raBuk5IdWHNUtfnN4HnUw+vwxqj1ueHEeP8F0hlH5EpIrKw19VS+ArcgvzuDuQ==
+growi-plugin-lsx@weseek/growi-plugin-lsx#master:
+  version "3.0.0"
+  resolved "https://codeload.github.com/weseek/growi-plugin-lsx/tar.gz/690fce55200ce43b8dd64e04765670cfae7aa1c1"
   dependencies:
-    growi-commons "^4.0.0"
+    growi-commons "^4.0.1"
     url "^0.11.0"
 
 growly@^1.3.0:
