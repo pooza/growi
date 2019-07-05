@@ -1,13 +1,13 @@
-'use strict';
-
 module.exports = {
+  Config: require('./config'),
   Page: require('./page'),
-  PageGroupRelation: require('./page-group-relation'),
+  PageTagRelation: require('./page-tag-relation'),
   User: require('./user'),
   ExternalAccount: require('./external-account'),
   UserGroup: require('./user-group'),
   UserGroupRelation: require('./user-group-relation'),
   Revision: require('./revision'),
+  Tag: require('./tag'),
   Bookmark: require('./bookmark'),
   Comment: require('./comment'),
   Attachment: require('./attachment'),

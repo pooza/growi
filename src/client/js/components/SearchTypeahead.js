@@ -7,8 +7,10 @@ import { AsyncTypeahead } from 'react-bootstrap-typeahead';
 import UserPicture from './User/UserPicture';
 import PageListMeta from './PageList/PageListMeta';
 import PagePath from './PageList/PagePath';
+import AppContainer from '../services/AppContainer';
+import { createSubscribedElement } from './UnstatedUtils';
 
-export default class SearchTypeahead extends React.Component {
+class SearchTypeahead extends React.Component {
 
   constructor(props) {
 
@@ -16,13 +18,10 @@ export default class SearchTypeahead extends React.Component {
 
     this.state = {
       input: this.props.keywordOnInit,
-      keyword: '',
-      searchedKeyword: '',
       pages: [],
       isLoading: false,
       searchError: null,
     };
-    this.crowi = this.props.crowi;
 
     this.restoreInitialData = this.restoreInitialData.bind(this);
     this.search = this.search.bind(this);
@@ -39,10 +38,13 @@ export default class SearchTypeahead extends React.Component {
    * Get instance of AsyncTypeahead
    */
   getTypeahead() {
-    return this.refs.typeahead ? this.refs.typeahead.getInstance() : null;
+    return this.typeahead ? this.typeahead.getInstance() : null;
   }
 
   componentDidMount() {
+    // **MEMO** This doesn't work at this time -- 2019.05.13 Yuki Takei
+    // It is needed to use Modal component of react-bootstrap when showing Move/Duplicate/CreateNewPage modals
+    // this.typeahead.getInstance().focus();
   }
 
   componentWillUnmount() {
@@ -54,7 +56,7 @@ export default class SearchTypeahead extends React.Component {
   restoreInitialData() {
     // see https://github.com/ericgio/react-bootstrap-typeahead/issues/266#issuecomment-414987723
     const text = this.props.keywordOnInit;
-    const instance = this.refs.typeahead.getInstance();
+    const instance = this.typeahead.getInstance();
     instance.clear();
     instance.setState({ text });
   }
@@ -62,18 +64,14 @@ export default class SearchTypeahead extends React.Component {
   search(keyword) {
 
     if (keyword === '') {
-      this.setState({
-        keyword: '',
-        searchedKeyword: '',
-      });
       return;
     }
 
-    this.setState({isLoading: true});
+    this.setState({ isLoading: true });
 
-    this.crowi.apiGet('/search', {q: keyword})
-      .then(res => { this.onSearchSuccess(res) })
-      .catch(err => { this.onSearchError(err) });
+    this.props.appContainer.apiGet('/search', { q: keyword })
+      .then((res) => { this.onSearchSuccess(res) })
+      .catch((err) => { this.onSearchError(err) });
   }
 
   /**
@@ -83,10 +81,11 @@ export default class SearchTypeahead extends React.Component {
   onSearchSuccess(res) {
     this.setState({
       isLoading: false,
-      keyword: '',
       pages: res.data,
     });
-    this.props.onSearchSuccess && this.props.onSearchSuccess(res);
+    if (this.props.onSearchSuccess != null) {
+      this.props.onSearchSuccess(res);
+    }
   }
 
   /**
@@ -98,14 +97,16 @@ export default class SearchTypeahead extends React.Component {
       isLoading: false,
       searchError: err,
     });
-    this.props.onSearchError && this.props.onSearchError(err);
+    if (this.props.onSearchError != null) {
+      this.props.onSearchError(err);
+    }
   }
 
   onInputChange(text) {
-    this.setState({input: text});
+    this.setState({ input: text });
     this.props.onInputChange(text);
     if (text === '') {
-      this.setState({pages: []});
+      this.setState({ pages: [] });
     }
   }
 
@@ -141,9 +142,9 @@ export default class SearchTypeahead extends React.Component {
    * Get restore form button to initialize button
    */
   getRestoreFormButton() {
-    let isHidden = (this.state.input === this.props.keywordOnInit);
+    const isHidden = (this.state.input === this.props.keywordOnInit);
 
-    return isHidden ? <span></span> : (
+    return isHidden ? <span /> : (
       <button type="button" className="btn btn-link search-clear" onMouseDown={this.restoreInitialData}>
         <i className="icon-close" />
       </button>
@@ -154,16 +155,16 @@ export default class SearchTypeahead extends React.Component {
     const page = option;
     return (
       <span>
-      <UserPicture user={page.lastUpdateUser} size="sm" />
-      <PagePath page={page} />
-      <PageListMeta page={page} />
+        <UserPicture user={page.lastUpdateUser} size="sm" withoutLink />
+        <PagePath page={page} />
+        <PageListMeta page={page} />
       </span>
     );
   }
 
   render() {
-    const defaultSelected = (this.props.keywordOnInit != '')
-      ? [{path: this.props.keywordOnInit}]
+    const defaultSelected = (this.props.keywordOnInit !== '')
+      ? [{ path: this.props.keywordOnInit }]
       : [];
     const inputProps = { autoComplete: 'off' };
     if (this.props.inputName != null) {
@@ -176,7 +177,8 @@ export default class SearchTypeahead extends React.Component {
       <div className="search-typeahead">
         <AsyncTypeahead
           {...this.props}
-          ref="typeahead"
+          id="search-typeahead-asynctypeahead"
+          ref={(c) => { this.typeahead = c }}
           inputProps={inputProps}
           isLoading={this.state.isLoading}
           labelKey="path"
@@ -187,8 +189,8 @@ export default class SearchTypeahead extends React.Component {
               // DIRTY HACK
               //  note: The default searchText string has been shown wrongly even if isLoading is false
               //        since upgrade react-bootstrap-typeahead to v3.3.2 -- 2019.02.05 Yuki Takei
-          align='left'
-          submitFormOnEnter={true}
+          align="left"
+          submitFormOnEnter
           onSearch={this.search}
           onInputChange={this.onInputChange}
           onKeyDown={this.onKeyDown}
@@ -201,13 +203,22 @@ export default class SearchTypeahead extends React.Component {
       </div>
     );
   }
+
 }
+
+/**
+ * Wrapper component for using unstated
+ */
+const SearchTypeaheadWrapper = (props) => {
+  return createSubscribedElement(SearchTypeahead, props, [AppContainer]);
+};
 
 /**
  * Properties
  */
 SearchTypeahead.propTypes = {
-  crowi:           PropTypes.object.isRequired,
+  appContainer: PropTypes.instanceOf(AppContainer).isRequired,
+
   onSearchSuccess: PropTypes.func,
   onSearchError:   PropTypes.func,
   onChange:        PropTypes.func,
@@ -232,3 +243,5 @@ SearchTypeahead.defaultProps = {
   keywordOnInit:   '',
   onInputChange: () => {},
 };
+
+export default SearchTypeaheadWrapper;

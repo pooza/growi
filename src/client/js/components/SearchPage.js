@@ -2,7 +2,10 @@
 
 import React from 'react';
 import PropTypes from 'prop-types';
-import { translate } from 'react-i18next';
+import { withTranslation } from 'react-i18next';
+
+import { createSubscribedElement } from './UnstatedUtils';
+import AppContainer from '../services/AppContainer';
 
 import SearchPageForm from './SearchPage/SearchPageForm';
 import SearchResult from './SearchPage/SearchResult';
@@ -13,12 +16,10 @@ class SearchPage extends React.Component {
     super(props);
 
     this.state = {
-      location: location,
-      searchingKeyword: this.props.query.q || '',
+      searchingKeyword: decodeURI(this.props.query.q) || '',
       searchedKeyword: '',
       searchedPages: [],
       searchResultMeta: {},
-      searchError: null,
     };
 
     this.search = this.search.bind(this);
@@ -27,17 +28,17 @@ class SearchPage extends React.Component {
 
   componentDidMount() {
     const keyword = this.state.searchingKeyword;
-    if (keyword !== '')  {
-      this.search({keyword});
+    if (keyword !== '') {
+      this.search({ keyword });
     }
   }
 
   static getQueryByLocation(location) {
-    let search = location.search || '';
-    let query = {};
+    const search = location.search || '';
+    const query = {};
 
-    search.replace(/^\?/, '').split('&').forEach(function(element) {
-      let queryParts = element.split('=');
+    search.replace(/^\?/, '').split('&').forEach((element) => {
+      const queryParts = element.split('=');
       query[queryParts[0]] = decodeURIComponent(queryParts[1]).replace(/\+/g, ' ');
     });
 
@@ -45,7 +46,7 @@ class SearchPage extends React.Component {
   }
 
   changeURL(keyword, refreshHash) {
-    let hash = location.hash || '';
+    let hash = window.location.hash || '';
     // TODO 整理する
     if (refreshHash || this.state.searchedKeyword !== '') {
       hash = '';
@@ -62,7 +63,6 @@ class SearchPage extends React.Component {
         searchingKeyword: '',
         searchedPages: [],
         searchResultMeta: {},
-        searchError: null,
       });
 
       return true;
@@ -72,54 +72,60 @@ class SearchPage extends React.Component {
       searchingKeyword: keyword,
     });
 
-    this.props.crowi.apiGet('/search', {q: keyword})
-    .then(res => {
-      this.changeURL(keyword);
+    this.props.appContainer.apiGet('/search', { q: keyword })
+      .then((res) => {
+        this.changeURL(keyword);
 
-      this.setState({
-        searchedKeyword: keyword,
-        searchedPages: res.data,
-        searchResultMeta: res.meta,
+        this.setState({
+          searchedKeyword: keyword,
+          searchedPages: res.data,
+          searchResultMeta: res.meta,
+        });
+      })
+      .catch((err) => {
+        // TODO error
+        // this.setState({
+        // });
       });
-    }).catch(err => {
-      // TODO error
-      this.setState({
-        searchError: err,
-      });
-    });
   }
 
   render() {
     return (
       <div>
         <div className="search-page-input">
-          <SearchPageForm t={this.props.t}
-            crowi={this.props.crowi}
+          <SearchPageForm
+            t={this.props.t}
             onSearchFormChanged={this.search}
             keyword={this.state.searchingKeyword}
-            />
+          />
         </div>
         <SearchResult
-          crowi={this.props.crowi} crowiRenderer={this.props.crowiRenderer}
           pages={this.state.searchedPages}
           searchingKeyword={this.state.searchingKeyword}
           searchResultMeta={this.state.searchResultMeta}
-          />
+        />
       </div>
     );
   }
+
 }
 
+/**
+ * Wrapper component for using unstated
+ */
+const SearchPageWrapper = (props) => {
+  return createSubscribedElement(SearchPage, props, [AppContainer]);
+};
+
 SearchPage.propTypes = {
-  t: PropTypes.func.isRequired,               // i18next
-  crowi: PropTypes.object.isRequired,
-  crowiRenderer: PropTypes.object.isRequired,
+  t: PropTypes.func.isRequired, // i18next
+  appContainer: PropTypes.instanceOf(AppContainer).isRequired,
+
   query: PropTypes.object,
 };
 SearchPage.defaultProps = {
-  //pollInterval: 1000,
-  query: SearchPage.getQueryByLocation(location || {}),
-  searchError: null,
+  // pollInterval: 1000,
+  query: SearchPage.getQueryByLocation(window.location || {}),
 };
 
-export default translate()(SearchPage);
+export default withTranslation()(SearchPageWrapper);

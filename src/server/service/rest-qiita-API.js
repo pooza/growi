@@ -4,9 +4,9 @@ function getAxios(team, token) {
     headers: {
       'Content-Type': 'application/json',
       'X-Requested-With': 'XMLHttpRequest',
-      'authorization': `Bearer ${token}`
+      authorization: `Bearer ${token}`,
     },
-    responseType: 'json'
+    responseType: 'json',
   });
 }
 
@@ -19,9 +19,9 @@ class RestQiitaAPIService {
 
   constructor(crowi) {
     this.crowi = crowi;
-    this.config = crowi.getConfig();
-    this.team = this.config.crowi['importer:qiita:team_name'];
-    this.token = this.config.crowi['importer:qiita:access_token'];
+    this.configManager = crowi.configManager;
+    this.team = this.configManager.getConfig('crowi', 'importer:qiita:team_name');
+    this.token = this.configManager.getConfig('crowi', 'importer:qiita:access_token');
     this.axios = getAxios(this.team, this.token);
   }
 
@@ -31,8 +31,8 @@ class RestQiitaAPIService {
    * @param {string} token
    */
   async reset() {
-    this.team = this.config.crowi['importer:qiita:team_name'];
-    this.token = this.config.crowi['importer:qiita:access_token'];
+    this.team = this.configManager.getConfig('crowi', 'importer:qiita:team_name');
+    this.token = this.configManager.getConfig('crowi', 'importer:qiita:access_token');
     this.axios = getAxios(this.team, this.token);
   }
 
@@ -43,11 +43,11 @@ class RestQiitaAPIService {
    */
   async restAPI(path) {
     return this.axios.get(path)
-      .then(function(res) {
+      .then((res) => {
         const data = res.data;
         const total = res.headers['total-count'];
 
-        return {data, total};
+        return { data, total };
       });
   }
 
@@ -69,17 +69,18 @@ class RestQiitaAPIService {
    * get Qiita pages
    * @memberof RestQiitaAPI
    * @param {string} pageNum
-   * @param {string} per_page
+   * @param {string} perPage
    */
-  async getQiitaPages(pageNum, per_page) {
-    const res = await this.restAPI(`/items?page=${pageNum}&per_page=${per_page}`);
+  async getQiitaPages(pageNum, perPage) {
+    const res = await this.restAPI(`/items?page=${pageNum}&per_page=${perPage}`);
     const pages = res.data;
     const total = res.total;
 
     if (pages.length > 0) {
-      return {pages, total};
+      return { pages, total };
     }
   }
+
 }
 
 module.exports = RestQiitaAPIService;

@@ -6,7 +6,7 @@ import escapeStringRegexp from 'escape-string-regexp';
 export default class PagePath extends React.Component {
 
   getShortPath(path) {
-    let name = path.replace(/(\/)$/, '');
+    const name = path.replace(/(\/)$/, '');
 
     // /.../hoge/YYYY/MM/DD 形式のページ
     if (name.match(/.+\/([^/]+\/\d{4}\/\d{2}\/\d{2})$/)) {
@@ -30,11 +30,11 @@ export default class PagePath extends React.Component {
   render() {
     const page = this.props.page;
     const isShortPathOnly = this.props.isShortPathOnly;
-    const pagePath = decodeURIComponent(page.path.replace(this.props.excludePathString.replace(/^\//, ''), ''));
+    const pagePath = decodeURIComponent(page.path);
     const shortPath = this.getShortPath(pagePath);
 
     const shortPathEscaped = escapeStringRegexp(shortPath);
-    const pathPrefix = pagePath.replace(new RegExp(shortPathEscaped + '(/)?$'), '');
+    const pathPrefix = pagePath.replace(new RegExp(`${shortPathEscaped}(/)?$`), '');
 
     let classNames = ['page-path'];
     classNames = classNames.concat(this.props.additionalClassNames);
@@ -42,22 +42,18 @@ export default class PagePath extends React.Component {
     if (isShortPathOnly) {
       return <span className={classNames.join(' ')}>{shortPath}</span>;
     }
-    else {
-      return <span className={classNames.join(' ')}>{pathPrefix}<strong>{shortPath}</strong></span>;
-    }
 
+    return <span className={classNames.join(' ')}>{pathPrefix}<strong>{shortPath}</strong></span>;
   }
+
 }
 
 PagePath.propTypes = {
   page: PropTypes.object.isRequired,
   isShortPathOnly: PropTypes.bool,
-  excludePathString: PropTypes.string,
   additionalClassNames: PropTypes.array,
 };
 
 PagePath.defaultProps = {
-  page: {},
   additionalClassNames: [],
-  excludePathString: '',
 };

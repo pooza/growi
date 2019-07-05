@@ -1,7 +1,6 @@
-'use strict';
+const form = require('express-form');
 
-var form = require('express-form')
-  , field = form.field;
+const field = form.field;
 
 module.exports = form(
   field('commentForm.page_id').trim().required(),
@@ -9,6 +8,7 @@ module.exports = form(
   field('commentForm.comment').trim().required(),
   field('commentForm.comment_position').trim().toInt(),
   field('commentForm.is_markdown').trim().toBooleanStrict(),
+  field('commentForm.replyTo').trim(),
 
   field('slackNotificationForm.isSlackEnabled').trim().toBooleanStrict().required(),
   field('slackNotificationForm.slackChannels').trim(),

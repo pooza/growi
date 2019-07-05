@@ -1,10 +1,13 @@
+/* eslint-disable react/prop-types */
 import React from 'react';
 import Button from 'react-bootstrap/es/Button';
 import Modal from 'react-bootstrap/es/Modal';
 
-import User from '../User/User';
+import UserPicture from '../User/UserPicture';
+import Username from '../User/Username';
 
 export default class DeleteAttachmentModal extends React.Component {
+
   constructor(props) {
     super(props);
 
@@ -25,7 +28,7 @@ export default class DeleteAttachmentModal extends React.Component {
 
   renderByFileFormat(attachment) {
     const content = (attachment.fileFormat.match(/image\/.+/i))
-      ? <img src={attachment.filePathProxied} />
+      ? <img src={attachment.filePathProxied} alt="deleting image" />
       : '';
 
 
@@ -35,7 +38,7 @@ export default class DeleteAttachmentModal extends React.Component {
           <i className={this.iconNameByFormat(attachment.fileFormat)}></i> {attachment.originalName}
         </p>
         <p>
-          uploaded by <User user={attachment.creator} username />
+          uploaded by <UserPicture user={attachment.creator} size="sm"></UserPicture> <Username user={attachment.creator}></Username>
         </p>
         {content}
       </div>
@@ -63,7 +66,7 @@ export default class DeleteAttachmentModal extends React.Component {
       deletingIndicator = <span>{this.props.deleteError}</span>;
     }
 
-    let renderAttachment = this.renderByFileFormat(attachment);
+    const renderAttachment = this.renderByFileFormat(attachment);
 
     return (
       <Modal {...props} className="attachment-delete-modal" bsSize="large" aria-labelledby="contained-modal-title-lg">
@@ -77,11 +80,15 @@ export default class DeleteAttachmentModal extends React.Component {
           <div className="mr-3 d-inline-block">
             {deletingIndicator}
           </div>
-          <Button onClick={this._onDeleteConfirm} bsStyle="danger"
-            disabled={this.props.deleting}>Delete!</Button>
+          <Button
+            onClick={this._onDeleteConfirm}
+            bsStyle="danger"
+            disabled={this.props.deleting}
+          >Delete!
+          </Button>
         </Modal.Footer>
       </Modal>
     );
   }
-}
 
+}

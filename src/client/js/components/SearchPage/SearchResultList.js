@@ -1,26 +1,28 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 
-import GrowiRenderer from '../../util/GrowiRenderer';
-
 import RevisionLoader from '../Page/RevisionLoader';
+import AppContainer from '../../services/AppContainer';
+import { createSubscribedElement } from '../UnstatedUtils';
 
-export default class SearchResultList extends React.Component {
+class SearchResultList extends React.Component {
 
   constructor(props) {
     super(props);
 
-    this.growiRenderer = new GrowiRenderer(this.props.crowi, this.props.crowiRenderer, {mode: 'searchresult'});
+    this.growiRenderer = this.props.appContainer.getRenderer('searchresult');
   }
 
   render() {
     const resultList = this.props.pages.map((page) => {
       return (
         <div id={page._id} key={page._id} className="search-result-page">
-          <h2><a href={page.path}>{page.path}</a></h2>
+          <h2 className="inline"><a href={page.path}>{page.path}</a></h2>
+          { page.tags.length > 0 && (
+            <span><i className="tag-icon icon-tag"></i> {page.tags.join(', ')}</span>
+          )}
           <RevisionLoader
-            crowi={this.props.crowi}
-            crowiRenderer={this.growiRenderer}
+            growiRenderer={this.growiRenderer}
             pageId={page._id}
             pagePath={page.path}
             revisionId={page.revision}
@@ -32,20 +34,28 @@ export default class SearchResultList extends React.Component {
 
     return (
       <div>
-      {resultList}
+        {resultList}
       </div>
     );
   }
+
 }
 
+/**
+ * Wrapper component for using unstated
+ */
+const SearchResultListWrapper = (props) => {
+  return createSubscribedElement(SearchResultList, props, [AppContainer]);
+};
+
 SearchResultList.propTypes = {
-  crowi: PropTypes.object.isRequired,
-  crowiRenderer: PropTypes.object.isRequired,
+  appContainer: PropTypes.instanceOf(AppContainer).isRequired,
+
   pages: PropTypes.array.isRequired,
   searchingKeyword: PropTypes.string.isRequired,
 };
 
 SearchResultList.defaultProps = {
-  pages: [],
-  searchingKeyword: '',
 };
+
+export default SearchResultListWrapper;

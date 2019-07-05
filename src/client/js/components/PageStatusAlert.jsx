@@ -1,6 +1,12 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import { translate } from 'react-i18next';
+
+import { withTranslation } from 'react-i18next';
+
+import AppContainer from '../services/AppContainer';
+import PageContainer from '../services/PageContainer';
+
+import { createSubscribedElement } from './UnstatedUtils';
 
 /**
  *
@@ -17,12 +23,6 @@ class PageStatusAlert extends React.Component {
     super(props);
 
     this.state = {
-      initialRevisionId: this.props.revisionId,
-      revisionId: this.props.revisionId,
-      revisionIdHackmdSynced: this.props.revisionIdHackmdSynced,
-      lastUpdateUsername: undefined,
-      hasDraftOnHackmd: this.props.hasDraftOnHackmd,
-      isDraftUpdatingInRealtime: false,
     };
 
     this.renderSomeoneEditingAlert = this.renderSomeoneEditingAlert.bind(this);
@@ -30,32 +30,12 @@ class PageStatusAlert extends React.Component {
     this.renderUpdatedAlert = this.renderUpdatedAlert.bind(this);
   }
 
-  /**
-   * clear status (invoked when page is updated by myself)
-   */
-  clearRevisionStatus(updatedRevisionId, updatedRevisionIdHackmdSynced) {
-    this.setState({
-      initialRevisionId: updatedRevisionId,
-      revisionId: updatedRevisionId,
-      revisionIdHackmdSynced: updatedRevisionIdHackmdSynced,
-      hasDraftOnHackmd: false,
-      isDraftUpdatingInRealtime: false,
-    });
+  componentWillMount() {
+    this.props.appContainer.registerComponentInstance('PageStatusAlert', this);
   }
 
-  setRevisionId(revisionId, revisionIdHackmdSynced) {
-    this.setState({ revisionId, revisionIdHackmdSynced });
-  }
-
-  setLastUpdateUsername(lastUpdateUsername) {
-    this.setState({ lastUpdateUsername });
-  }
-
-  setHasDraftOnHackmd(hasDraftOnHackmd) {
-    this.setState({
-      hasDraftOnHackmd,
-      isDraftUpdatingInRealtime: true,
-    });
+  refreshPage() {
+    window.location.reload();
   }
 
   renderSomeoneEditingAlert() {
@@ -96,11 +76,11 @@ class PageStatusAlert extends React.Component {
     return (
       <div className="alert-revision-outdated myadmin-alert alert-warning myadmin-alert-bottom alertbottom2">
         <i className="icon-fw icon-bulb"></i>
-        {this.state.lastUpdateUsername} {label1}
+        {this.props.pageContainer.state.lastUpdateUsername} {label1}
         &nbsp;
         <i className="fa fa-angle-double-right"></i>
         &nbsp;
-        <a href="javascript:location.reload();">
+        <a href="#" onClick={this.refreshPage}>
           {label2}
         </a>
       </div>
@@ -110,34 +90,43 @@ class PageStatusAlert extends React.Component {
   render() {
     let content = <React.Fragment></React.Fragment>;
 
-    const isRevisionOutdated = this.state.initialRevisionId !== this.state.revisionId;
-    const isHackmdDocumentOutdated = this.state.revisionId !== this.state.revisionIdHackmdSynced;
+    const {
+      revisionId, revisionIdHackmdSynced, remoteRevisionId, hasDraftOnHackmd, isHackmdDraftUpdatingInRealtime,
+    } = this.props.pageContainer.state;
 
+    const isRevisionOutdated = revisionId !== remoteRevisionId;
+    const isHackmdDocumentOutdated = revisionIdHackmdSynced !== remoteRevisionId;
+
+    // when remote revision is newer than both
     if (isHackmdDocumentOutdated && isRevisionOutdated) {
       content = this.renderUpdatedAlert();
     }
-    else {
-      if (this.state.isDraftUpdatingInRealtime) {
-        content = this.renderSomeoneEditingAlert();
-      }
-      else if (this.state.hasDraftOnHackmd) {
-        content = this.renderDraftExistsAlert();
-      }
+    // when someone editing with HackMD
+    else if (isHackmdDraftUpdatingInRealtime) {
+      content = this.renderSomeoneEditingAlert();
+    }
+    // when the draft of HackMD is newest
+    else if (hasDraftOnHackmd) {
+      content = this.renderDraftExistsAlert();
     }
 
     return content;
   }
+
 }
 
+/**
+ * Wrapper component for using unstated
+ */
+const PageStatusAlertWrapper = (props) => {
+  return createSubscribedElement(PageStatusAlert, props, [AppContainer, PageContainer]);
+};
+
 PageStatusAlert.propTypes = {
-  t: PropTypes.func.isRequired,               // i18next
-  crowi: PropTypes.object.isRequired,
-  hasDraftOnHackmd: PropTypes.bool.isRequired,
-  revisionId: PropTypes.string,
-  revisionIdHackmdSynced: PropTypes.string,
+  t: PropTypes.func.isRequired, // i18next
+
+  appContainer: PropTypes.instanceOf(AppContainer).isRequired,
+  pageContainer: PropTypes.instanceOf(PageContainer).isRequired,
 };
 
-PageStatusAlert.defaultProps = {
-};
-
-export default translate()(PageStatusAlert);
+export default withTranslation()(PageStatusAlertWrapper);

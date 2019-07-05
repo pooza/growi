@@ -5,39 +5,37 @@ const urljoin = require('url-join');
 const aws = require('aws-sdk');
 
 module.exports = function(crowi) {
-
-  const lib = {};
+  const Uploader = require('./uploader');
+  const { configManager } = crowi;
+  const lib = new Uploader(configManager);
 
   function getAwsConfig() {
-    const config = crowi.getConfig();
     return {
-      accessKeyId: config.crowi['aws:accessKeyId'],
-      secretAccessKey: config.crowi['aws:secretAccessKey'],
-      region: config.crowi['aws:region'],
-      bucket: config.crowi['aws:bucket']
+      accessKeyId: configManager.getConfig('crowi', 'aws:accessKeyId'),
+      secretAccessKey: configManager.getConfig('crowi', 'aws:secretAccessKey'),
+      region: configManager.getConfig('crowi', 'aws:region'),
+      bucket: configManager.getConfig('crowi', 'aws:bucket'),
     };
   }
 
-  function S3Factory() {
+  function S3Factory(isUploadable) {
     const awsConfig = getAwsConfig();
-    const Config = crowi.model('Config');
-    const config = crowi.getConfig();
 
-    if (!Config.isUploadable(config)) {
+    if (!isUploadable) {
       throw new Error('AWS is not configured.');
     }
 
     aws.config.update({
       accessKeyId: awsConfig.accessKeyId,
       secretAccessKey: awsConfig.secretAccessKey,
-      region: awsConfig.region
+      region: awsConfig.region,
     });
 
     return new aws.S3();
   }
 
   function getFilePathOnStorage(attachment) {
-    if (attachment.filePath != null) {  // backward compatibility for v3.3.x or below
+    if (attachment.filePath != null) { // backward compatibility for v3.3.x or below
       return attachment.filePath;
     }
 
@@ -55,7 +53,7 @@ module.exports = function(crowi) {
   };
 
   lib.deleteFileByFilePath = async function(filePath) {
-    const s3 = S3Factory();
+    const s3 = S3Factory(this.getIsUploadable());
     const awsConfig = getAwsConfig();
 
     const params = {
@@ -69,7 +67,7 @@ module.exports = function(crowi) {
   lib.uploadFile = function(fileStream, attachment) {
     logger.debug(`File uploading: fileName=${attachment.fileName}`);
 
-    const s3 = S3Factory();
+    const s3 = S3Factory(this.getIsUploadable());
     const awsConfig = getAwsConfig();
 
     const filePath = getFilePathOnStorage(attachment);
@@ -110,12 +108,15 @@ module.exports = function(crowi) {
   };
 
   /**
-   * chech storage for fileUpload reaches MONGO_GRIDFS_TOTAL_LIMIT (for gridfs)
+   * check the file size limit
+   *
+   * In detail, the followings are checked.
+   * - per-file size limit (specified by MAX_FILE_SIZE)
    */
-  lib.checkCapacity = async(uploadFileSize) => {
-    return true;
+  lib.checkLimit = async(uploadFileSize) => {
+    const maxFileSize = crowi.configManager.getConfig('crowi', 'app:maxFileSize');
+    return { isUploadable: uploadFileSize <= maxFileSize, errorMessage: 'File size exceeds the size limit per file' };
   };
 
   return lib;
 };
-

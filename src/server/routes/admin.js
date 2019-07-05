@@ -1,23 +1,26 @@
+/* eslint-disable no-use-before-define */
 module.exports = function(crowi, app) {
-  'use strict';
-
   const debug = require('debug')('growi:routes:admin');
   const logger = require('@alias/logger')('growi:routes:admin');
-  const fs = require('fs');
 
   const models = crowi.models;
   const Page = models.Page;
-  const PageGroupRelation = models.PageGroupRelation;
   const User = models.User;
   const ExternalAccount = models.ExternalAccount;
   const UserGroup = models.UserGroup;
   const UserGroupRelation = models.UserGroupRelation;
-  const Config = models.Config;
   const GlobalNotificationSetting = models.GlobalNotificationSetting;
   const GlobalNotificationMailSetting = models.GlobalNotificationMailSetting;
   const GlobalNotificationSlackSetting = models.GlobalNotificationSlackSetting; // eslint-disable-line no-unused-vars
 
-  const recommendedXssWhiteList = require('@commons/service/xss/recommendedXssWhiteList');
+  const {
+    configManager,
+    aclService,
+    slackNotificationService,
+    customizeService,
+  } = crowi;
+
+  const recommendedWhitelist = require('@commons/service/xss/recommended-whitelist');
   const PluginUtils = require('../plugins/plugin-utils');
   const ApiResponse = require('../util/apiResponse');
   const importer = require('../util/importer')(crowi);
@@ -28,13 +31,12 @@ module.exports = function(crowi, app) {
   const MAX_PAGE_LIST = 50;
   const actions = {};
 
-
   function createPager(total, limit, page, pagesCount, maxPageList) {
     const pager = {
-      page: page,
-      pagesCount: pagesCount,
+      page,
+      pagesCount,
       pages: [],
-      total: total,
+      total,
       previous: null,
       previousDots: false,
       next: null,
@@ -49,8 +51,8 @@ module.exports = function(crowi, app) {
       pager.next = page + 1;
     }
 
-    let pagerMin = Math.max(1, Math.ceil(page - maxPageList/2));
-    let pagerMax = Math.min(pagesCount, Math.floor(page + maxPageList/2));
+    let pagerMin = Math.max(1, Math.ceil(page - maxPageList / 2));
+    let pagerMax = Math.min(pagesCount, Math.floor(page + maxPageList / 2));
     if (pagerMin === 1) {
       if (MAX_PAGE_LIST < pagesCount) {
         pagerMax = MAX_PAGE_LIST;
@@ -94,12 +96,7 @@ module.exports = function(crowi, app) {
   // app.get('/admin/app'                  , admin.app.index);
   actions.app = {};
   actions.app.index = function(req, res) {
-    var settingForm;
-    settingForm = Config.setupConfigFormData('crowi', req.config);
-
-    return res.render('admin/app', {
-      settingForm: settingForm,
-    });
+    return res.render('admin/app');
   };
 
   actions.app.settingUpdate = function(req, res) {
@@ -108,94 +105,79 @@ module.exports = function(crowi, app) {
   // app.get('/admin/security'                  , admin.security.index);
   actions.security = {};
   actions.security.index = function(req, res) {
-    const settingForm = Config.setupConfigFormData('crowi', req.config);
-    const isAclEnabled = !Config.isPublicWikiOnly(req.config);
-    return res.render('admin/security', { settingForm, isAclEnabled });
+    return res.render('admin/security');
   };
 
   // app.get('/admin/markdown'                  , admin.markdown.index);
   actions.markdown = {};
   actions.markdown.index = function(req, res) {
-    const config = crowi.getConfig();
-    const markdownSetting = Config.setupConfigFormData('markdown', config);
+    const markdownSetting = configManager.getConfigByPrefix('markdown', 'markdown:');
 
     return res.render('admin/markdown', {
-      markdownSetting: markdownSetting,
-      recommendedXssWhiteList: recommendedXssWhiteList,
+      markdownSetting,
+      recommendedWhitelist,
     });
   };
 
   // app.post('/admin/markdown/lineBreaksSetting' , admin.markdown.lineBreaksSetting);
-  actions.markdown.lineBreaksSetting = function(req, res) {
-    var markdownSetting = req.form.markdownSetting;
+  actions.markdown.lineBreaksSetting = async function(req, res) {
+    const markdownSetting = req.form.markdownSetting;
 
-    req.session.markdownSetting = markdownSetting;
     if (req.form.isValid) {
-      Config.updateNamespaceByArray('markdown', markdownSetting, function(err, config) {
-        Config.updateConfigCache('markdown', config);
-        req.session.markdownSetting = null;
-        req.flash('successMessage', ['Successfully updated!']);
-        return res.redirect('/admin/markdown');
-      });
+      await configManager.updateConfigsInTheSameNamespace('markdown', markdownSetting);
+      req.flash('successMessage', ['Successfully updated!']);
     }
     else {
       req.flash('errorMessage', req.form.errors);
-      return res.redirect('/admin/markdown');
     }
+
+    return res.redirect('/admin/markdown');
   };
 
   // app.post('/admin/markdown/presentationSetting' , admin.markdown.presentationSetting);
-  actions.markdown.presentationSetting = function(req, res) {
-    let presentationSetting = req.form.markdownSetting;
+  actions.markdown.presentationSetting = async function(req, res) {
+    const markdownSetting = req.form.markdownSetting;
 
-    req.session.markdownSetting = presentationSetting;
     if (req.form.isValid) {
-      Config.updateNamespaceByArray('markdown', presentationSetting, function(err, config) {
-        Config.updateConfigCache('markdown', config);
-        req.session.markdownSetting = null;
-        req.flash('successMessage', ['Successfully updated!']);
-        return res.redirect('/admin/markdown');
-      });
+      await configManager.updateConfigsInTheSameNamespace('markdown', markdownSetting);
+      req.flash('successMessage', ['Successfully updated!']);
     }
     else {
       req.flash('errorMessage', req.form.errors);
-      return res.redirect('/admin/markdown');
     }
+
+    return res.redirect('/admin/markdown');
   };
 
   // app.post('/admin/markdown/xss-setting' , admin.markdown.xssSetting);
-  actions.markdown.xssSetting = function(req, res) {
-    let xssSetting = req.form.markdownSetting;
+  actions.markdown.xssSetting = async function(req, res) {
+    const xssSetting = req.form.markdownSetting;
 
-    xssSetting['markdown:xss:tagWhiteList'] = stringToArray(xssSetting['markdown:xss:tagWhiteList']);
-    xssSetting['markdown:xss:attrWhiteList'] = stringToArray(xssSetting['markdown:xss:attrWhiteList']);
+    xssSetting['markdown:xss:tagWhiteList'] = csvToArray(xssSetting['markdown:xss:tagWhiteList']);
+    xssSetting['markdown:xss:attrWhiteList'] = csvToArray(xssSetting['markdown:xss:attrWhiteList']);
 
-    req.session.markdownSetting = xssSetting;
     if (req.form.isValid) {
-      Config.updateNamespaceByArray('markdown', xssSetting, function(err, config) {
-        Config.updateConfigCache('markdown', config);
-        req.session.xssSetting = null;
-        req.flash('successMessage', ['Successfully updated!']);
-        return res.redirect('/admin/markdown');
-      });
+      await configManager.updateConfigsInTheSameNamespace('markdown', xssSetting);
+      req.flash('successMessage', ['Successfully updated!']);
     }
     else {
       req.flash('errorMessage', req.form.errors);
-      return res.redirect('/admin/markdown');
     }
+
+    return res.redirect('/admin/markdown');
   };
 
-  const stringToArray = (string) => {
+  const csvToArray = (string) => {
     const array = string.split(',');
-    return array.map(item => item.trim());
+    return array.map((item) => { return item.trim() });
   };
 
   // app.get('/admin/customize' , admin.customize.index);
   actions.customize = {};
   actions.customize.index = function(req, res) {
-    var settingForm;
-    settingForm = Config.setupConfigFormData('crowi', req.config);
+    const settingForm = configManager.getConfigByPrefix('crowi', 'customize:');
 
+    /* eslint-disable quote-props, no-multi-spaces */
     const highlightJsCssSelectorOptions = {
       'github':           { name: '[Light] GitHub',         border: false },
       'github-gist':      { name: '[Light] GitHub Gist',    border: true },
@@ -208,23 +190,23 @@ module.exports = function(crowi, app) {
       'tomorrow-night':   { name: '[Dark] Tomorrow Night',  border: false },
       'vs2015':           { name: '[Dark] Vs 2015',         border: false },
     };
+    /* eslint-enable quote-props, no-multi-spaces */
 
     return res.render('admin/customize', {
-      settingForm: settingForm,
-      highlightJsCssSelectorOptions: highlightJsCssSelectorOptions
+      settingForm,
+      highlightJsCssSelectorOptions,
     });
   };
 
   // app.get('/admin/notification'               , admin.notification.index);
   actions.notification = {};
   actions.notification.index = async(req, res) => {
-    const config = crowi.getConfig();
     const UpdatePost = crowi.model('UpdatePost');
-    let slackSetting = Config.setupConfigFormData('notification', config);
-    const hasSlackIwhUrl = Config.hasSlackIwhUrl(config);
-    const hasSlackToken = Config.hasSlackToken(config);
+    let slackSetting = configManager.getConfigByPrefix('notification', 'slack:');
+    const hasSlackIwhUrl = !!configManager.getConfig('notification', 'slack:incomingWebhookUrl');
+    const hasSlackToken = !!configManager.getConfig('notification', 'slack:token');
 
-    if (!Config.hasSlackIwhUrl(req.config)) {
+    if (!hasSlackIwhUrl) {
       slackSetting['slack:incomingWebhookUrl'] = '';
     }
 
@@ -246,72 +228,65 @@ module.exports = function(crowi, app) {
   };
 
   // app.post('/admin/notification/slackSetting' , admin.notification.slackauth);
-  actions.notification.slackSetting = function(req, res) {
-    var slackSetting = req.form.slackSetting;
+  actions.notification.slackSetting = async function(req, res) {
+    const slackSetting = req.form.slackSetting;
 
-    req.session.slackSetting = slackSetting;
     if (req.form.isValid) {
-      Config.updateNamespaceByArray('notification', slackSetting, function(err, config) {
-        Config.updateConfigCache('notification', config);
-        req.flash('successMessage', ['Successfully Updated!']);
-        req.session.slackSetting = null;
+      await configManager.updateConfigsInTheSameNamespace('notification', slackSetting);
+      req.flash('successMessage', ['Successfully Updated!']);
 
-        // Re-setup
-        crowi.setupSlack().then(function() {
-          return res.redirect('/admin/notification');
-        });
+      // Re-setup
+      crowi.setupSlack().then(() => {
       });
     }
     else {
       req.flash('errorMessage', req.form.errors);
-      return res.redirect('/admin/notification');
     }
+
+    return res.redirect('/admin/notification');
   };
 
   // app.get('/admin/notification/slackAuth'     , admin.notification.slackauth);
   actions.notification.slackAuth = function(req, res) {
     const code = req.query.code;
-    const config = crowi.getConfig();
 
-    if (!code || !Config.hasSlackConfig(req.config)) {
+    if (!code || !slackNotificationService.hasSlackConfig()) {
       return res.redirect('/admin/notification');
     }
 
     const slack = crowi.slack;
     slack.getOauthAccessToken(code)
-    .then(data => {
-      debug('oauth response', data);
-      Config.updateNamespaceByArray('notification', {'slack:token': data.access_token}, function(err, config) {
-        if (err) {
-          req.flash('errorMessage', ['Failed to save access_token. Please try again.']);
-        }
-        else {
-          Config.updateConfigCache('notification', config);
+      .then(async(data) => {
+        debug('oauth response', data);
+
+        try {
+          await configManager.updateConfigsInTheSameNamespace('notification', { 'slack:token': data.access_token });
           req.flash('successMessage', ['Successfully Connected!']);
+        }
+        catch (err) {
+          req.flash('errorMessage', ['Failed to save access_token. Please try again.']);
         }
 
         return res.redirect('/admin/notification');
+      })
+      .catch((err) => {
+        debug('oauth response ERROR', err);
+        req.flash('errorMessage', ['Failed to fetch access_token. Please do connect again.']);
+        return res.redirect('/admin/notification');
       });
-    }).catch(err => {
-      debug('oauth response ERROR', err);
-      req.flash('errorMessage', ['Failed to fetch access_token. Please do connect again.']);
-      return res.redirect('/admin/notification');
-    });
   };
 
   // app.post('/admin/notification/slackIwhSetting' , admin.notification.slackIwhSetting);
-  actions.notification.slackIwhSetting = function(req, res) {
-    var slackIwhSetting = req.form.slackIwhSetting;
+  actions.notification.slackIwhSetting = async function(req, res) {
+    const slackIwhSetting = req.form.slackIwhSetting;
 
     if (req.form.isValid) {
-      Config.updateNamespaceByArray('notification', slackIwhSetting, function(err, config) {
-        Config.updateConfigCache('notification', config);
-        req.flash('successMessage', ['Successfully Updated!']);
+      await configManager.updateConfigsInTheSameNamespace('notification', slackIwhSetting);
+      req.flash('successMessage', ['Successfully Updated!']);
 
-        // Re-setup
-        crowi.setupSlack().then(function() {
-          return res.redirect('/admin/notification#slack-incoming-webhooks');
-        });
+      // Re-setup
+      crowi.setupSlack().then(() => {
+        return res.redirect('/admin/notification#slack-incoming-webhooks');
       });
     }
     else {
@@ -321,26 +296,21 @@ module.exports = function(crowi, app) {
   };
 
   // app.post('/admin/notification/slackSetting/disconnect' , admin.notification.disconnectFromSlack);
-  actions.notification.disconnectFromSlack = function(req, res) {
-    const config = crowi.getConfig();
-    const slack = crowi.slack;
+  actions.notification.disconnectFromSlack = async function(req, res) {
+    await configManager.updateConfigsInTheSameNamespace('notification', { 'slack:token': '' });
+    req.flash('successMessage', ['Successfully Disconnected!']);
 
-    Config.updateNamespaceByArray('notification', {'slack:token': ''}, function(err, config) {
-      Config.updateConfigCache('notification', config);
-      req.flash('successMessage', ['Successfully Disconnected!']);
-
-      return res.redirect('/admin/notification');
-    });
+    return res.redirect('/admin/notification');
   };
 
   actions.globalNotification = {};
   actions.globalNotification.detail = async(req, res) => {
     const notificationSettingId = req.params.id;
-    let renderVars = {};
+    const renderVars = {};
 
     if (notificationSettingId) {
       try {
-        renderVars.setting = await GlobalNotificationSetting.findOne({_id: notificationSettingId});
+        renderVars.setting = await GlobalNotificationSetting.findOne({ _id: notificationSettingId });
       }
       catch (err) {
         logger.error(`Error in finding a global notification setting with {_id: ${notificationSettingId}}`);
@@ -378,7 +348,7 @@ module.exports = function(crowi, app) {
 
   actions.globalNotification.update = async(req, res) => {
     const form = req.form.notificationGlobal;
-    const setting = await GlobalNotificationSetting.findOne({_id: form.id});
+    const setting = await GlobalNotificationSetting.findOne({ _id: form.id });
 
     switch (form.notifyToType) {
       case 'mail':
@@ -404,7 +374,7 @@ module.exports = function(crowi, app) {
     const id = req.params.id;
 
     try {
-      await GlobalNotificationSetting.findOneAndRemove({_id: id});
+      await GlobalNotificationSetting.findOneAndRemove({ _id: id });
       return res.redirect('/admin/notification#global-notification');
     }
     catch (err) {
@@ -414,9 +384,9 @@ module.exports = function(crowi, app) {
   };
 
   const getNotificationEvents = (form) => {
-    let triggerEvents = [];
-    const triggerEventKeys = Object.keys(form).filter(key => key.match(/^triggerEvent/));
-    triggerEventKeys.forEach(key => {
+    const triggerEvents = [];
+    const triggerEventKeys = Object.keys(form).filter((key) => { return key.match(/^triggerEvent/) });
+    triggerEventKeys.forEach((key) => {
       if (form[key]) {
         triggerEvents.push(form[key]);
       }
@@ -424,7 +394,7 @@ module.exports = function(crowi, app) {
     return triggerEvents;
   };
 
-  actions.search = {}
+  actions.search = {};
   actions.search.index = function(req, res) {
     const search = crowi.getSearcher();
     if (!search) {
@@ -437,29 +407,28 @@ module.exports = function(crowi, app) {
   actions.user = {};
   actions.user.index = async function(req, res) {
     const activeUsers = await User.countListByStatus(User.STATUS_ACTIVE);
-    const Config = crowi.model('Config');
-    const userUpperLimit = Config.userUpperLimit(crowi);
+    const userUpperLimit = aclService.userUpperLimit();
     const isUserCountExceedsUpperLimit = await User.isUserCountExceedsUpperLimit();
 
-    var page = parseInt(req.query.page) || 1;
+    const page = parseInt(req.query.page) || 1;
 
-    const result = await User.findUsersWithPagination({page: page});
+    const result = await User.findUsersWithPagination({ page });
     const pager = createPager(result.total, result.limit, result.page, result.pages, MAX_PAGE_LIST);
 
     return res.render('admin/users', {
       users: result.docs,
-      pager: pager,
-      activeUsers: activeUsers,
-      userUpperLimit: userUpperLimit,
-      isUserCountExceedsUpperLimit: isUserCountExceedsUpperLimit
+      pager,
+      activeUsers,
+      userUpperLimit,
+      isUserCountExceedsUpperLimit,
     });
   };
 
   actions.user.invite = function(req, res) {
-    var form = req.form.inviteForm;
-    var toSendEmail = form.sendEmail || false;
+    const form = req.form.inviteForm;
+    const toSendEmail = form.sendEmail || false;
     if (req.form.isValid) {
-      User.createUsersByInvitation(form.emailList.split('\n'), toSendEmail, function(err, userList) {
+      User.createUsersByInvitation(form.emailList.split('\n'), toSendEmail, (err, userList) => {
         if (err) {
           req.flash('errorMessage', req.form.errors.join('\n'));
         }
@@ -476,11 +445,11 @@ module.exports = function(crowi, app) {
   };
 
   actions.user.makeAdmin = function(req, res) {
-    var id = req.params.id;
-    User.findById(id, function(err, userData) {
-      userData.makeAdmin(function(err, userData) {
+    const id = req.params.id;
+    User.findById(id, (err, userData) => {
+      userData.makeAdmin((err, userData) => {
         if (err === null) {
-          req.flash('successMessage', userData.name + 'さんのアカウントを管理者に設定しました。');
+          req.flash('successMessage', `${userData.name}さんのアカウントを管理者に設定しました。`);
         }
         else {
           req.flash('errorMessage', '更新に失敗しました。');
@@ -492,11 +461,11 @@ module.exports = function(crowi, app) {
   };
 
   actions.user.removeFromAdmin = function(req, res) {
-    var id = req.params.id;
-    User.findById(id, function(err, userData) {
-      userData.removeFromAdmin(function(err, userData) {
+    const id = req.params.id;
+    User.findById(id, (err, userData) => {
+      userData.removeFromAdmin((err, userData) => {
         if (err === null) {
-          req.flash('successMessage', userData.name + 'さんのアカウントを管理者から外しました。');
+          req.flash('successMessage', `${userData.name}さんのアカウントを管理者から外しました。`);
         }
         else {
           req.flash('errorMessage', '更新に失敗しました。');
@@ -515,11 +484,11 @@ module.exports = function(crowi, app) {
       return res.redirect('/admin/users');
     }
 
-    var id = req.params.id;
-    User.findById(id, function(err, userData) {
-      userData.statusActivate(function(err, userData) {
+    const id = req.params.id;
+    User.findById(id, (err, userData) => {
+      userData.statusActivate((err, userData) => {
         if (err === null) {
-          req.flash('successMessage', userData.name + 'さんのアカウントを有効化しました');
+          req.flash('successMessage', `${userData.name}さんのアカウントを有効化しました`);
         }
         else {
           req.flash('errorMessage', '更新に失敗しました。');
@@ -531,12 +500,12 @@ module.exports = function(crowi, app) {
   };
 
   actions.user.suspend = function(req, res) {
-    var id = req.params.id;
+    const id = req.params.id;
 
-    User.findById(id, function(err, userData) {
-      userData.statusSuspend(function(err, userData) {
+    User.findById(id, (err, userData) => {
+      userData.statusSuspend((err, userData) => {
         if (err === null) {
-          req.flash('successMessage', userData.name + 'さんのアカウントを利用停止にしました');
+          req.flash('successMessage', `${userData.name}さんのアカウントを利用停止にしました`);
         }
         else {
           req.flash('errorMessage', '更新に失敗しました。');
@@ -557,39 +526,39 @@ module.exports = function(crowi, app) {
         return resolve(userData);
       });
     })
-    .then((userData) => {
-      return new Promise((resolve, reject) => {
-        userData.statusDelete((err, userData) => {
-          if (err) {
-            reject(err);
-          }
-          resolve(userData);
+      .then((userData) => {
+        return new Promise((resolve, reject) => {
+          userData.statusDelete((err, userData) => {
+            if (err) {
+              reject(err);
+            }
+            resolve(userData);
+          });
         });
-      });
-    })
-    .then((userData) => {
+      })
+      .then((userData) => {
       // remove all External Accounts
-      return ExternalAccount.remove({user: userData}).then(() => userData);
-    })
-    .then((userData) => {
-      return Page.removeByPath(`/user/${username}`).then(() => userData);
-    })
-    .then((userData) => {
-      req.flash('successMessage', `${username} さんのアカウントを削除しました`);
-      return res.redirect('/admin/users');
-    })
-    .catch((err) => {
-      req.flash('errorMessage', '削除に失敗しました。');
-      return res.redirect('/admin/users');
-    });
+        return ExternalAccount.remove({ user: userData }).then(() => { return userData });
+      })
+      .then((userData) => {
+        return Page.removeByPath(`/user/${username}`).then(() => { return userData });
+      })
+      .then((userData) => {
+        req.flash('successMessage', `${username} さんのアカウントを削除しました`);
+        return res.redirect('/admin/users');
+      })
+      .catch((err) => {
+        req.flash('errorMessage', '削除に失敗しました。');
+        return res.redirect('/admin/users');
+      });
   };
 
   // これやったときの relation の挙動未確認
   actions.user.removeCompletely = function(req, res) {
     // ユーザーの物理削除
-    var id = req.params.id;
+    const id = req.params.id;
 
-    User.removeCompletelyById(id, function(err, removed) {
+    User.removeCompletelyById(id, (err, removed) => {
       if (err) {
         debug('Error while removing user.', err, id);
         req.flash('errorMessage', '完全な削除に失敗しました。');
@@ -607,26 +576,27 @@ module.exports = function(crowi, app) {
     const User = crowi.model('User');
 
     User.resetPasswordByRandomString(id)
-    .then(function(data) {
-      data.user = User.filterToPublicFields(data.user);
-      return res.json(ApiResponse.success(data));
-    }).catch(function(err) {
-      debug('Error on reseting password', err);
-      return res.json(ApiResponse.error('Error'));
-    });
+      .then((data) => {
+        data.user = User.filterToPublicFields(data.user);
+        return res.json(ApiResponse.success(data));
+      })
+      .catch((err) => {
+        debug('Error on reseting password', err);
+        return res.json(ApiResponse.error('Error'));
+      });
   };
 
   actions.externalAccount = {};
   actions.externalAccount.index = function(req, res) {
     const page = parseInt(req.query.page) || 1;
 
-    ExternalAccount.findAllWithPagination({page})
+    ExternalAccount.findAllWithPagination({ page })
       .then((result) => {
         const pager = createPager(result.total, result.limit, result.page, result.pages, MAX_PAGE_LIST);
 
         return res.render('admin/external-accounts', {
           accounts: result.docs,
-          pager: pager
+          pager,
         });
       });
   };
@@ -653,27 +623,27 @@ module.exports = function(crowi, app) {
 
   actions.userGroup = {};
   actions.userGroup.index = function(req, res) {
-    var page = parseInt(req.query.page) || 1;
-    const isAclEnabled = !Config.isPublicWikiOnly(req.config);
-    var renderVar = {
+    const page = parseInt(req.query.page) || 1;
+    const isAclEnabled = !aclService.getIsPublicWikiOnly();
+    const renderVar = {
       userGroups: [],
       userGroupRelations: new Map(),
       pager: null,
       isAclEnabled,
     };
 
-    UserGroup.findUserGroupsWithPagination({ page: page })
+    UserGroup.findUserGroupsWithPagination({ page })
       .then((result) => {
         const pager = createPager(result.total, result.limit, result.page, result.pages, MAX_PAGE_LIST);
-        var userGroups = result.docs;
+        const userGroups = result.docs;
         renderVar.userGroups = userGroups;
         renderVar.pager = pager;
         return userGroups.map((userGroup) => {
           return new Promise((resolve, reject) => {
             UserGroupRelation.findAllRelationForUserGroup(userGroup)
-            .then((relations) => {
-              return resolve([userGroup, relations]);
-            });
+              .then((relations) => {
+                return resolve([userGroup, relations]);
+              });
           });
         });
       })
@@ -685,7 +655,7 @@ module.exports = function(crowi, app) {
         debug('in findUserGroupsWithPagination findAllRelationForUserGroupResult', renderVar.userGroupRelations);
         return res.render('admin/user-groups', renderVar);
       })
-      .catch( function(err) {
+      .catch((err) => {
         debug('Error on find all relations', err);
         return res.json(ApiResponse.error('Error'));
       });
@@ -701,7 +671,7 @@ module.exports = function(crowi, app) {
       relatedPages: [],
     };
 
-    const userGroup = await UserGroup.findOne({ _id: userGroupId});
+    const userGroup = await UserGroup.findOne({ _id: userGroupId });
 
     if (userGroup == null) {
       logger.error('no userGroup is exists. ', userGroupId);
@@ -716,7 +686,7 @@ module.exports = function(crowi, app) {
       // get all not related users for group
       UserGroupRelation.findUserByNotRelatedGroup(userGroup),
       // get all related pages
-      Page.find({grant: Page.GRANT_USER_GROUP, grantedGroup: { $in: [userGroup] }}),
+      Page.find({ grant: Page.GRANT_USER_GROUP, grantedGroup: { $in: [userGroup] } }),
     ]);
     renderVar.userGroupRelations = resolves[0];
     renderVar.notRelatedusers = resolves[1];
@@ -725,7 +695,7 @@ module.exports = function(crowi, app) {
     return res.render('admin/user-group-detail', renderVar);
   };
 
-  //グループの生成
+  // グループの生成
   actions.userGroup.create = function(req, res) {
     const form = req.form.createGroupForm;
     if (req.form.isValid) {
@@ -750,56 +720,54 @@ module.exports = function(crowi, app) {
 
   //
   actions.userGroup.update = function(req, res) {
-
     const userGroupId = req.params.userGroupId;
     const name = crowi.xss.process(req.body.name);
 
     UserGroup.findById(userGroupId)
-    .then((userGroupData) => {
-      if (userGroupData == null) {
-        req.flash('errorMessage', 'グループの検索に失敗しました。');
-        return new Promise();
-      }
-      else {
+      .then((userGroupData) => {
+        if (userGroupData == null) {
+          req.flash('errorMessage', 'グループの検索に失敗しました。');
+          return new Promise();
+        }
+
         // 名前存在チェック
         return UserGroup.isRegisterableName(name)
-        .then((isRegisterableName) => {
+          .then((isRegisterableName) => {
           // 既に存在するグループ名に更新しようとした場合はエラー
-          if (!isRegisterableName) {
-            req.flash('errorMessage', 'グループ名が既に存在します。');
-          }
-          else {
-            return userGroupData.updateName(name)
-            .then(() => {
-              req.flash('successMessage', 'グループ名を更新しました。');
-            })
-            .catch((err) => {
-              req.flash('errorMessage', 'グループ名の更新に失敗しました。');
-            });
-          }
-        });
-      }
-    })
-    .then(() => {
-      return res.redirect('/admin/user-group-detail/' + userGroupId);
-    });
+            if (!isRegisterableName) {
+              req.flash('errorMessage', 'グループ名が既に存在します。');
+            }
+            else {
+              return userGroupData.updateName(name)
+                .then(() => {
+                  req.flash('successMessage', 'グループ名を更新しました。');
+                })
+                .catch((err) => {
+                  req.flash('errorMessage', 'グループ名の更新に失敗しました。');
+                });
+            }
+          });
+      })
+      .then(() => {
+        return res.redirect(`/admin/user-group-detail/${userGroupId}`);
+      });
   };
 
 
   // app.post('/_api/admin/user-group/delete' , admin.userGroup.removeCompletely);
-  actions.userGroup.removeCompletely = function(req, res) {
-    const id = req.body.user_group_id;
+  actions.userGroup.removeCompletely = async(req, res) => {
+    const { deleteGroupId, actionName, selectedGroupId } = req.body;
 
-    UserGroup.removeCompletelyById(id)
-      .then(() => {
-        req.flash('successMessage', '削除しました');
-        return res.redirect('/admin/user-groups');
-      })
-      .catch((err) => {
-        debug('Error while removing userGroup.', err, id);
-        req.flash('errorMessage', '完全な削除に失敗しました。');
-        return res.redirect('/admin/user-groups');
-      });
+    try {
+      await UserGroup.removeCompletelyById(deleteGroupId, actionName, selectedGroupId);
+      req.flash('successMessage', '削除しました');
+    }
+    catch (err) {
+      debug('Error while removing userGroup.', err, deleteGroupId);
+      req.flash('errorMessage', '完全な削除に失敗しました。');
+    }
+
+    return res.redirect('/admin/user-groups');
   };
 
   actions.userGroupRelation = {};
@@ -825,19 +793,20 @@ module.exports = function(crowi, app) {
       // ユーザを名前で検索
       User.findUserByUsername(userName),
     ])
-    .then((resolves) => {
-      userGroup = resolves[0];
-      user = resolves[1];
-      // Relation を作成
-      UserGroupRelation.createRelation(userGroup, user);
-    })
-    .then((result) => {
-      return res.redirect('/admin/user-group-detail/' + userGroup.id);
-    }).catch((err) => {
-      debug('Error on create user-group relation', err);
-      req.flash('errorMessage', 'Error on create user-group relation');
-      return res.redirect('/admin/user-group-detail/' + userGroup.id);
-    });
+      .then((resolves) => {
+        userGroup = resolves[0];
+        user = resolves[1];
+        // Relation を作成
+        UserGroupRelation.createRelation(userGroup, user);
+      })
+      .then((result) => {
+        return res.redirect(`/admin/user-group-detail/${userGroup.id}`);
+      })
+      .catch((err) => {
+        debug('Error on create user-group relation', err);
+        req.flash('errorMessage', 'Error on create user-group relation');
+        return res.redirect(`/admin/user-group-detail/${userGroup.id}`);
+      });
   };
 
   actions.userGroupRelation.remove = function(req, res) {
@@ -846,53 +815,52 @@ module.exports = function(crowi, app) {
     const relationId = req.params.relationId;
 
     UserGroupRelation.removeById(relationId)
-    .then(() =>{
-      return res.redirect('/admin/user-group-detail/' + userGroupId);
-    })
-    .catch((err) => {
-      debug('Error on remove user-group-relation', err);
-      req.flash('errorMessage', 'グループのユーザ削除に失敗しました。');
-    });
-
+      .then(() => {
+        return res.redirect(`/admin/user-group-detail/${userGroupId}`);
+      })
+      .catch((err) => {
+        debug('Error on remove user-group-relation', err);
+        req.flash('errorMessage', 'グループのユーザ削除に失敗しました。');
+      });
   };
 
   // Importer management
   actions.importer = {};
   actions.importer.index = function(req, res) {
-
-    var settingForm;
-    settingForm = Config.setupConfigFormData('crowi', req.config);
+    const settingForm = configManager.getConfigByPrefix('crowi', 'importer:');
 
     return res.render('admin/importer', {
-      settingForm: settingForm,
+      settingForm,
     });
   };
 
   actions.api = {};
-  actions.api.appSetting = function(req, res) {
-    var form = req.form.settingForm;
+  actions.api.appSetting = async function(req, res) {
+    const form = req.form.settingForm;
 
     if (req.form.isValid) {
       debug('form content', form);
 
       // mail setting ならここで validation
       if (form['mail:from']) {
-        validateMailSetting(req, form, function(err, data) {
+        validateMailSetting(req, form, async(err, data) => {
           debug('Error validate mail setting: ', err, data);
           if (err) {
             req.form.errors.push('SMTPを利用したテストメール送信に失敗しました。設定をみなおしてください。');
-            return res.json({status: false, message: req.form.errors.join('\n')});
+            return res.json({ status: false, message: req.form.errors.join('\n') });
           }
 
-          return saveSetting(req, res, form);
+          await configManager.updateConfigsInTheSameNamespace('crowi', form);
+          return res.json({ status: true });
         });
       }
       else {
-        return saveSetting(req, res, form);
+        await configManager.updateConfigsInTheSameNamespace('crowi', form);
+        return res.json({ status: true });
       }
     }
     else {
-      return res.json({status: false, message: req.form.errors.join('\n')});
+      return res.json({ status: false, message: req.form.errors.join('\n') });
     }
   };
 
@@ -900,70 +868,65 @@ module.exports = function(crowi, app) {
     const form = req.form.settingForm;
 
     if (!req.form.isValid) {
-      return res.json({status: false, message: req.form.errors.join('\n')});
+      return res.json({ status: false, message: req.form.errors.join('\n') });
     }
 
     debug('form content', form);
 
     try {
-      await crowi.configManager.updateConfigsInTheSameNamespace('crowi', form);
-      return res.json({status: true});
+      await configManager.updateConfigsInTheSameNamespace('crowi', form);
+      return res.json({ status: true });
     }
     catch (err) {
       logger.error(err);
-      return res.json({status: false});
+      return res.json({ status: false });
     }
   };
 
-  actions.api.securitySetting = function(req, res) {
+  actions.api.securitySetting = async function(req, res) {
+    if (!req.form.isValid) {
+      return res.json({ status: false, message: req.form.errors.join('\n') });
+    }
+
     const form = req.form.settingForm;
-    const config = crowi.getConfig();
-    const isPublicWikiOnly = Config.isPublicWikiOnly(config);
-    if (isPublicWikiOnly) {
-      const basicName = form['security:basicName'];
-      const basicSecret = form['security:basicSecret'];
-      if (basicName != '' || basicSecret != '') {
-        req.form.errors.push('Public Wikiのため、Basic認証は利用できません。');
-        return res.json({status: false, message: req.form.errors.join('\n')});
-      }
+    if (aclService.getIsPublicWikiOnly()) {
       const guestMode = form['security:restrictGuestMode'];
-      if ( guestMode == 'Deny' ) {
+      if (guestMode === 'Deny') {
         req.form.errors.push('Private Wikiへの設定変更はできません。');
-        return res.json({status: false, message: req.form.errors.join('\n')});
+        return res.json({ status: false, message: req.form.errors.join('\n') });
       }
     }
 
-    if (req.form.isValid) {
-      debug('form content', form);
-      return saveSetting(req, res, form);
+    try {
+      await configManager.updateConfigsInTheSameNamespace('crowi', form);
+      return res.json({ status: true });
     }
-    else {
-      return res.json({status: false, message: req.form.errors.join('\n')});
+    catch (err) {
+      logger.error(err);
+      return res.json({ status: false });
     }
   };
 
   actions.api.securityPassportLdapSetting = function(req, res) {
-    var form = req.form.settingForm;
+    const form = req.form.settingForm;
 
     if (!req.form.isValid) {
-      return res.json({status: false, message: req.form.errors.join('\n')});
+      return res.json({ status: false, message: req.form.errors.join('\n') });
     }
 
     debug('form content', form);
-    return saveSettingAsync(form)
+    return configManager.updateConfigsInTheSameNamespace('crowi', form)
       .then(() => {
-        const config = crowi.getConfig();
-
         // reset strategy
         crowi.passportService.resetLdapStrategy();
         // setup strategy
-        if (Config.isEnabledPassportLdap(config)) {
+        if (configManager.getConfig('crowi', 'security:passport-ldap:isEnabled')) {
           crowi.passportService.setupLdapStrategy(true);
         }
         return;
       })
       .then(() => {
-        res.json({status: true});
+        res.json({ status: true });
       });
   };
 
@@ -973,192 +936,237 @@ module.exports = function(crowi, app) {
     validateSamlSettingForm(req.form, req.t);
 
     if (!req.form.isValid) {
-      return res.json({status: false, message: req.form.errors.join('\n')});
+      return res.json({ status: false, message: req.form.errors.join('\n') });
     }
 
     debug('form content', form);
-    await crowi.configManager.updateConfigsInTheSameNamespace('crowi', form);
+    await configManager.updateConfigsInTheSameNamespace('crowi', form);
 
     // reset strategy
     await crowi.passportService.resetSamlStrategy();
     // setup strategy
-    if (crowi.configManager.getConfig('crowi', 'security:passport-saml:isEnabled')) {
+    if (configManager.getConfig('crowi', 'security:passport-saml:isEnabled')) {
       try {
         await crowi.passportService.setupSamlStrategy(true);
       }
       catch (err) {
         // reset
         await crowi.passportService.resetSamlStrategy();
-        return res.json({status: false, message: err.message});
+        return res.json({ status: false, message: err.message });
       }
     }
 
-    return res.json({status: true});
+    return res.json({ status: true });
+  };
+
+  actions.api.securityPassportBasicSetting = async(req, res) => {
+    const form = req.form.settingForm;
+
+    if (!req.form.isValid) {
+      return res.json({ status: false, message: req.form.errors.join('\n') });
+    }
+
+    debug('form content', form);
+    await configManager.updateConfigsInTheSameNamespace('crowi', form);
+
+    // reset strategy
+    await crowi.passportService.resetBasicStrategy();
+    // setup strategy
+    if (configManager.getConfig('crowi', 'security:passport-basic:isEnabled')) {
+      try {
+        await crowi.passportService.setupBasicStrategy(true);
+      }
+      catch (err) {
+        // reset
+        await crowi.passportService.resetBasicStrategy();
+        return res.json({ status: false, message: err.message });
+      }
+    }
+
+    return res.json({ status: true });
   };
 
   actions.api.securityPassportGoogleSetting = async(req, res) => {
     const form = req.form.settingForm;
 
     if (!req.form.isValid) {
-      return res.json({status: false, message: req.form.errors.join('\n')});
+      return res.json({ status: false, message: req.form.errors.join('\n') });
     }
 
     debug('form content', form);
-    await saveSettingAsync(form);
-    const config = await crowi.getConfig();
+    await configManager.updateConfigsInTheSameNamespace('crowi', form);
 
     // reset strategy
     await crowi.passportService.resetGoogleStrategy();
     // setup strategy
-    if (Config.isEnabledPassportGoogle(config)) {
+    if (configManager.getConfig('crowi', 'security:passport-google:isEnabled')) {
       try {
         await crowi.passportService.setupGoogleStrategy(true);
       }
       catch (err) {
         // reset
         await crowi.passportService.resetGoogleStrategy();
-        return res.json({status: false, message: err.message});
+        return res.json({ status: false, message: err.message });
       }
     }
 
-    return res.json({status: true});
+    return res.json({ status: true });
   };
 
   actions.api.securityPassportGitHubSetting = async(req, res) => {
     const form = req.form.settingForm;
 
     if (!req.form.isValid) {
-      return res.json({status: false, message: req.form.errors.join('\n')});
+      return res.json({ status: false, message: req.form.errors.join('\n') });
     }
 
     debug('form content', form);
-    await saveSettingAsync(form);
-    const config = await crowi.getConfig();
+    await configManager.updateConfigsInTheSameNamespace('crowi', form);
 
     // reset strategy
     await crowi.passportService.resetGitHubStrategy();
     // setup strategy
-    if (Config.isEnabledPassportGitHub(config)) {
+    if (configManager.getConfig('crowi', 'security:passport-github:isEnabled')) {
       try {
         await crowi.passportService.setupGitHubStrategy(true);
       }
       catch (err) {
         // reset
         await crowi.passportService.resetGitHubStrategy();
-        return res.json({status: false, message: err.message});
+        return res.json({ status: false, message: err.message });
       }
     }
 
-    return res.json({status: true});
+    return res.json({ status: true });
   };
 
   actions.api.securityPassportTwitterSetting = async(req, res) => {
     const form = req.form.settingForm;
 
     if (!req.form.isValid) {
-      return res.json({status: false, message: req.form.errors.join('\n')});
+      return res.json({ status: false, message: req.form.errors.join('\n') });
     }
 
     debug('form content', form);
-    await saveSettingAsync(form);
-    const config = await crowi.getConfig();
-
+    await configManager.updateConfigsInTheSameNamespace('crowi', form);
 
     // reset strategy
     await crowi.passportService.resetTwitterStrategy();
     // setup strategy
-    if (Config.isEnabledPassportTwitter(config)) {
+    if (configManager.getConfig('crowi', 'security:passport-twitter:isEnabled')) {
       try {
         await crowi.passportService.setupTwitterStrategy(true);
       }
       catch (err) {
         // reset
         await crowi.passportService.resetTwitterStrategy();
-        return res.json({status: false, message: err.message});
+        return res.json({ status: false, message: err.message });
       }
     }
 
-    return res.json({status: true});
+    return res.json({ status: true });
   };
-  actions.api.customizeSetting = function(req, res) {
+
+  actions.api.securityPassportOidcSetting = async(req, res) => {
+    const form = req.form.settingForm;
+
+    if (!req.form.isValid) {
+      return res.json({ status: false, message: req.form.errors.join('\n') });
+    }
+
+    debug('form content', form);
+    await configManager.updateConfigsInTheSameNamespace('crowi', form);
+
+    // reset strategy
+    await crowi.passportService.resetOidcStrategy();
+    // setup strategy
+    if (configManager.getConfig('crowi', 'security:passport-oidc:isEnabled')) {
+      try {
+        await crowi.passportService.setupOidcStrategy(true);
+      }
+      catch (err) {
+        // reset
+        await crowi.passportService.resetOidcStrategy();
+        return res.json({ status: false, message: err.message });
+      }
+    }
+
+    return res.json({ status: true });
+  };
+
+  actions.api.customizeSetting = async function(req, res) {
     const form = req.form.settingForm;
 
     if (req.form.isValid) {
       debug('form content', form);
-      return saveSetting(req, res, form);
-    }
-    else {
-      return res.json({status: false, message: req.form.errors.join('\n')});
-    }
-  };
+      await configManager.updateConfigsInTheSameNamespace('crowi', form);
+      customizeService.initCustomCss();
+      customizeService.initCustomTitle();
 
-  actions.api.customizeSetting = function(req, res) {
-    const form = req.form.settingForm;
+      return res.json({ status: true });
+    }
 
-    if (req.form.isValid) {
-      debug('form content', form);
-      return saveSetting(req, res, form);
-    }
-    else {
-      return res.json({status: false, message: req.form.errors.join('\n')});
-    }
+    return res.json({ status: false, message: req.form.errors.join('\n') });
   };
 
   // app.post('/_api/admin/notifications.add'    , admin.api.notificationAdd);
   actions.api.notificationAdd = function(req, res) {
-    var UpdatePost = crowi.model('UpdatePost');
-    var pathPattern = req.body.pathPattern;
-    var channel = req.body.channel;
+    const UpdatePost = crowi.model('UpdatePost');
+    const pathPattern = req.body.pathPattern;
+    const channel = req.body.channel;
 
     debug('notification.add', pathPattern, channel);
     UpdatePost.create(pathPattern, channel, req.user)
-    .then(function(doc) {
-      debug('Successfully save updatePost', doc);
+      .then((doc) => {
+        debug('Successfully save updatePost', doc);
 
-      // fixme: うーん
-      doc.creator = doc.creator._id.toString();
-      return res.json(ApiResponse.success({updatePost: doc}));
-    }).catch(function(err) {
-      debug('Failed to save updatePost', err);
-      return res.json(ApiResponse.error());
-    });
+        // fixme: うーん
+        doc.creator = doc.creator._id.toString();
+        return res.json(ApiResponse.success({ updatePost: doc }));
+      })
+      .catch((err) => {
+        debug('Failed to save updatePost', err);
+        return res.json(ApiResponse.error());
+      });
   };
 
   // app.post('/_api/admin/notifications.remove' , admin.api.notificationRemove);
   actions.api.notificationRemove = function(req, res) {
-    var UpdatePost = crowi.model('UpdatePost');
-    var id = req.body.id;
+    const UpdatePost = crowi.model('UpdatePost');
+    const id = req.body.id;
 
     UpdatePost.remove(id)
-    .then(function() {
-      debug('Successfully remove updatePost');
+      .then(() => {
+        debug('Successfully remove updatePost');
 
-      return res.json(ApiResponse.success({}));
-    }).catch(function(err) {
-      debug('Failed to remove updatePost', err);
-      return res.json(ApiResponse.error());
-    });
+        return res.json(ApiResponse.success({}));
+      })
+      .catch((err) => {
+        debug('Failed to remove updatePost', err);
+        return res.json(ApiResponse.error());
+      });
   };
 
   // app.get('/_api/admin/users.search' , admin.api.userSearch);
   actions.api.usersSearch = function(req, res) {
     const User = crowi.model('User');
-    const email =req.query.email;
+    const email = req.query.email;
 
     User.findUsersByPartOfEmail(email, {})
-    .then(users => {
-      const result = {
-        data: users
-      };
-      return res.json(ApiResponse.success(result));
-    }).catch(err => {
-      return res.json(ApiResponse.error());
-    });
+      .then((users) => {
+        const result = {
+          data: users,
+        };
+        return res.json(ApiResponse.success(result));
+      })
+      .catch((err) => {
+        return res.json(ApiResponse.error());
+      });
   };
 
   actions.api.toggleIsEnabledForGlobalNotification = async(req, res) => {
     const id = req.query.id;
-    const isEnabled = (req.query.isEnabled == 'true');
+    const isEnabled = (req.query.isEnabled === 'true');
 
     try {
       if (isEnabled) {
@@ -1185,11 +1193,13 @@ module.exports = function(crowi, app) {
     const form = req.form.settingForm;
 
     if (!req.form.isValid) {
-      return res.json({status: false, message: req.form.errors.join('\n')});
+      return res.json({ status: false, message: req.form.errors.join('\n') });
     }
 
-    await saveSetting(req, res, form);
-    await importer.initializeEsaClient();
+    await configManager.updateConfigsInTheSameNamespace('crowi', form);
+    importer.initializeEsaClient(); // let it run in the back aftert res
+
+    return res.json({ status: true });
   };
 
   /**
@@ -1202,11 +1212,13 @@ module.exports = function(crowi, app) {
     const form = req.form.settingForm;
 
     if (!req.form.isValid) {
-      return res.json({status: false, message: req.form.errors.join('\n')});
+      return res.json({ status: false, message: req.form.errors.join('\n') });
     }
 
-    await saveSetting(req, res, form);
-    await importer.initializeQiitaClient();
+    await configManager.updateConfigsInTheSameNamespace('crowi', form);
+    importer.initializeQiitaClient(); // let it run in the back aftert res
+
+    return res.json({ status: true });
   };
 
   /**
@@ -1323,45 +1335,23 @@ module.exports = function(crowi, app) {
       .then(() => {
         debug('Data is successfully indexed. ------------------ ✧✧');
       })
-      .catch(err => {
+      .catch((err) => {
         logger.error('Error', err);
       });
 
     return res.json(ApiResponse.success());
   };
 
-  /**
-   * save settings, update config cache, and response json
-   *
-   * @param {any} req
-   * @param {any} res
-   * @param {any} form
-   */
-  function saveSetting(req, res, form) {
-    Config.updateNamespaceByArray('crowi', form, function(err, config) {
-      Config.updateConfigCache('crowi', config);
-      return res.json({status: true});
-    });
-  }
-
-  /**
-   * save settings, update config cache ONLY. (this method don't response json)
-   *
-   * @param {any} form
-   * @returns
-   */
-  function saveSettingAsync(form) {
-    return new Promise((resolve, reject) => {
-      Config.updateNamespaceByArray('crowi', form, (err, config) => {
-        if (err) {
-          return reject(err);
-        }
-
-        Config.updateConfigCache('crowi', config);
-        return resolve();
-      });
-    });
-  }
+  actions.api.userGroups = async(req, res) => {
+    try {
+      const userGroups = await UserGroup.find();
+      return res.json(ApiResponse.success({ userGroups }));
+    }
+    catch (err) {
+      logger.error('Error', err);
+      return res.json(ApiResponse.error('Error'));
+    }
+  };
 
   function validateMailSetting(req, form, callback) {
     const mailer = crowi.mailer;
@@ -1386,7 +1376,7 @@ module.exports = function(crowi, app) {
       from: form['mail:from'],
       to: req.user.email,
       subject: 'Wiki管理設定のアップデートによるメール通知',
-      text: 'このメールは、WikiのSMTP設定のアップデートにより送信されています。'
+      text: 'このメールは、WikiのSMTP設定のアップデートにより送信されています。',
     }, callback);
   }
 
@@ -1399,7 +1389,7 @@ module.exports = function(crowi, app) {
   function validateSamlSettingForm(form, t) {
     for (const key of crowi.passportService.mandatoryConfigKeysForSaml) {
       const formValue = form.settingForm[key];
-      if (crowi.configManager.getConfigFromEnvVars('crowi', key) === null && formValue === '') {
+      if (configManager.getConfigFromEnvVars('crowi', key) === null && formValue === '') {
         const formItemName = t(`security_setting.form_item_name.${key}`);
         form.errors.push(t('form_validation.required', formItemName));
       }
@@ -1408,4 +1398,3 @@ module.exports = function(crowi, app) {
 
   return actions;
 };
-

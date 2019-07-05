@@ -11,26 +11,25 @@ module.exports = {
     dlls: [
       // Libraries
       'axios',
-      'babel-polyfill',
       'browser-bunyan', 'bunyan-format',
       'codemirror', 'react-codemirror2',
-      'clipboard',
       'date-fns',
       'diff2html',
       'debug',
       'entities',
+      'growi-commons',
       'i18next', 'i18next-browser-languagedetector',
       'jquery-slimscroll',
       'lodash', 'pako',
       'markdown-it', 'csv-to-markdown-table',
       'react', 'react-dom',
-      'react-bootstrap', 'react-bootstrap-typeahead', 'react-i18next', 'react-dropzone',
+      'react-bootstrap', 'react-bootstrap-typeahead',
+      'react-i18next', 'react-dropzone', 'react-hotkeys', 'react-copy-to-clipboard', 'react-waypoint',
       'socket.io-client',
       'toastr',
+      'unstated',
       'xss',
-      // GROWI Libraries
-      'growi-pluginkit',
-    ]
+    ],
   },
   output: {
     path: helpers.root('public/dll'),
@@ -44,7 +43,7 @@ module.exports = {
   plugins: [
     new webpack.DllPlugin({
       path: helpers.root('public/dll/manifest.json'),
-      name: 'growi_dlls'
-    })
+      name: 'growi_dlls',
+    }),
   ],
 };

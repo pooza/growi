@@ -1,14 +1,160 @@
-CHANGES
-========
+# CHANGES
 
-## 3.4.0-RC
+## 3.5.1-RC
+
+### BREAKING CHANGES
+
+* GROWI no longer supports
+    * Protection system with Basic Authentication
+    * Crowi Classic Authentication Mechanism
+    * [Crowi Template syntax](https://medium.com/crowi-book/crowi-v1-5-0-5a62e7c6be90)
+    * GROWI Plugins with schema version 2
+        * Upgrade [weseek/growi-plugin-lsx](https://github.com/weseek/growi-plugin-lsx) to v3.0.0 or above
+        * Upgrade [weseek/growi-plugin-pukiwiki-like-linker
+](https://github.com/weseek/growi-plugin-pukiwiki-like-linker
+) to v3.0.0 or above
+* The restriction mode of the root page (`/`) will be set 'Public'
+* The restriction mode of the root page (`/`) can not be changed after v 3.5.1
+
+Upgrading Guide: https://docs.growi.org/guide/upgrading/35x.html
+
+### Updates
+
+* Feature: Comment Thread
+* Feature: OpenID Connect authentication
+* Feature: HTTP Basic authentication
+* Feature: Staff Credits with [Konami Code](https://en.wikipedia.org/wiki/Konami_Code)
+* Feature: Restricte Complete Deletion of Pages
+* Improvement Draft list
+* Fix: Deleting page completely
+* Fix: Search with `prefix:` param with CJK pathname
+* Fix: Could not edit UserGroup even if `PUBLIC_WIKI_ONLY` is not set
+* I18n: User Management Details
+* I18n: Group Management Details
+* Support: Apply unstated
+* Support: Use Babel 7
+* Support: Support plugins with schema version 3
+* Support: Abolish Old Config API
+* Support: Apply Jest for Tests
+* Support: Upgrade libs
+    * async
+    * axios
+    * connect-mongo
+    * css-loader
+    * eslint
+    * eslint-config-weseek
+    * eslint-plugin-import
+    * eslint-plugin-jest
+    * eslint-plugin-react
+    * file-loader
+    * googleapis
+    * i18next
+    * migrate-mongo
+    * mini-css-extract-plugin
+    * mongoose
+    * mongoose-gridfs
+    * mongoose-unique-validator
+    * null-loader
+
+## 3.5.0 (Missing number)
+
+## 3.4.7
+
+* Improvement: Handle private pages on group deletion
+* Fix: Searching with `tag:xxx` syntax doesn't work
+* Fix: Check CSRF when updating user data
+* Fix: `createdAt` field initialization
+* I18n: Import data page
+* I18n: Group Management page
+
+## 3.4.6
+
+* Feature: Tags
+* Feature: Dropdown to copy page path/URL/MarkdownLink
+* Feature: List of drafts
+* Improvement: Replace icons of Editor Tool Bar
+* Improvement: Show display name when mouse hover to user image
+* Fix: URL in slack message is broken on Safari
+* Fix: Registration does not work when basic auth is enabled
+* Support: Publish API docs with swagger-jsdoc and ReDoc
+* Support: Upgrade libs
+    * cmd-env
+    * elasticsearch
+    * mongoose-gridfs
+    * node-dev
+    * null-loader
+    * react-codemirror
+
+## 3.4.5
+
+* Improvement: Pass autolink through the XSS filter according to CommonMark Spec
+* Fix: Update ElasticSearch index when deleting/duplicating pages
+* Fix: Xss filter breaks PlantUML arrows
+* Support: Support growi-plugin-lsx@2.2.0
+* Support: Upgrade libs
+    * growi-commons
+    * xss
+
+## 3.4.4
+
+* Fix: Comment component doesn't work
+
+## 3.4.3
+
+* Improvement: Add 'antarctic' theme
+* Support Apply eslint-config-airbnb based rules
+* Support Apply prettier and stylelint
+* Support: Upgrade libs
+    * csrf
+    * escape-string-regexp
+    * eslint
+    * express-session
+    * googleapis
+    * growi-commons
+    * i18next
+    * mini-css-extract-plugin
+    * nodemailer
+    * penpal
+    * react-i18next
+    * string-width
+
+## 3.4.2
+
+* Fix: Nofitication to Slack doesn't work
+    * Introduced by 3.4.0
+
+## 3.4.1
+
+* Fix: "Cannot find module 'stream-to-promise'" occured when build client with `FILE_UPLOAD=local`
+
+## 3.4.0
+
+### BREAKING CHANGES
+
+None.
+
+Upgrading Guide: https://docs.growi.org/guide/upgrading/34x.html
+
+### Updates
 
 * Improvement: Restrict to access attachments when the user is not allowed to see page
 * Improvement: Show fans and visitors of page
+* Improvement: Full text search tokenizing
+* Improvement: Markdown comment on Crowi Classic Layout
 * Fix: Profile image is not displayed when `FILE_UPLOAD=mongodb`
+* Fix: Posting comment doesn't work under Crowi Classic Layout
+    * Introduced by 3.1.5
+* Fix: HackMD doesn't work when `siteUrl` ends with slash
+* Fix: Ensure not to be able to move/duplicate page to the path which has trailing slash
 * Support: Launch with Node.js v10
 * Support: Launch with MongoDB 3.6
 * Support: Launch with Elasticsearch 6.6
+* Support: Upgrade libs
+    * bootstrap-sass
+    * browser-sync
+    * react
+    * react-dom
+
 
 ## 3.3.10
 

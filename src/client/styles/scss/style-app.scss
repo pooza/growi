@@ -39,6 +39,10 @@
 @import 'user_growi';
 @import 'handsontable';
 @import 'wiki';
+@import 'staff_credit';
+@import 'tag';
+@import 'staff_credit';
+@import 'draft';
 
 /*
  * for Guest User Mode
@@ -50,7 +54,6 @@
 .edit-button.edit-button-disabled {
   cursor: not-allowed;
 }
-
 
 /*
  * Helper Classes
@@ -65,14 +68,17 @@
     width: 48px;
     height: 48px;
   }
+
   &.picture-md {
     width: 24px;
     height: 24px;
   }
+
   &.picture-sm {
     width: 18px;
     height: 18px;
   }
+
   &.picture-xs {
     width: 14px;
     height: 14px;
@@ -81,8 +87,8 @@
 
 // transplant from FontAwesome
 .icon-fw {
-  width: 1.4em;
   display: inline-block;
+  width: 1.4em;
   text-align: left;
 }
 
@@ -91,6 +97,7 @@
     content: '⌘';
   }
 }
+
 .cmd-key.win {
   &:after {
     content: 'Ctrl';

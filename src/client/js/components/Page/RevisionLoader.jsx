@@ -3,12 +3,16 @@ import PropTypes from 'prop-types';
 
 import { Waypoint } from 'react-waypoint';
 
+import { createSubscribedElement } from '../UnstatedUtils';
+import GrowiRenderer from '../../util/GrowiRenderer';
+import AppContainer from '../../services/AppContainer';
+
 import RevisionRenderer from './RevisionRenderer';
 
 /**
  * Load data from server and render RevisionBody component
  */
-export default class RevisionLoader extends React.Component {
+class RevisionLoader extends React.Component {
 
   constructor(props) {
     super(props);
@@ -42,8 +46,8 @@ export default class RevisionLoader extends React.Component {
     };
 
     // load data with REST API
-    this.props.crowi.apiGet('/revisions.get', requestData)
-      .then(res => {
+    this.props.appContainer.apiGet('/revisions.get', requestData)
+      .then((res) => {
         if (!res.ok) {
           throw new Error(res.error);
         }
@@ -53,7 +57,7 @@ export default class RevisionLoader extends React.Component {
           error: null,
         });
       })
-      .catch(err => {
+      .catch((err) => {
         this.setState({ error: err });
       })
       .finally(() => {
@@ -70,9 +74,11 @@ export default class RevisionLoader extends React.Component {
   render() {
     // ----- before load -----
     if (this.props.lazy && !this.state.isLoaded) {
-      return <Waypoint onPositionChange={this.onWaypointChange} bottomOffset='-100px'>
-        <div className="wiki"></div>
-      </Waypoint>;
+      return (
+        <Waypoint onPositionChange={this.onWaypointChange} bottomOffset="-100px">
+          <div className="wiki"></div>
+        </Waypoint>
+      );
     }
 
     // ----- loading -----
@@ -94,21 +100,32 @@ export default class RevisionLoader extends React.Component {
 
     return (
       <RevisionRenderer
-          crowi={this.props.crowi} crowiRenderer={this.props.crowiRenderer}
-          pagePath={this.props.pagePath}
-          markdown={markdown}
-          highlightKeywords={this.props.highlightKeywords}
+        growiRenderer={this.props.growiRenderer}
+        pagePath={this.props.pagePath}
+        markdown={markdown}
+        highlightKeywords={this.props.highlightKeywords}
       />
     );
   }
+
 }
 
+/**
+ * Wrapper component for using unstated
+ */
+const RevisionLoaderWrapper = (props) => {
+  return createSubscribedElement(RevisionLoader, props, [AppContainer]);
+};
+
 RevisionLoader.propTypes = {
-  crowi: PropTypes.object.isRequired,
-  crowiRenderer: PropTypes.object.isRequired,
+  appContainer: PropTypes.instanceOf(AppContainer).isRequired,
+
+  growiRenderer: PropTypes.instanceOf(GrowiRenderer).isRequired,
   pageId: PropTypes.string.isRequired,
   pagePath: PropTypes.string.isRequired,
   revisionId: PropTypes.string.isRequired,
   lazy: PropTypes.bool,
   highlightKeywords: PropTypes.string,
 };
+
+export default RevisionLoaderWrapper;

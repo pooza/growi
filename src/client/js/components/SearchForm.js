@@ -1,9 +1,12 @@
 import React from 'react';
 import PropTypes from 'prop-types';
+import { createSubscribedElement } from './UnstatedUtils';
+import AppContainer from '../services/AppContainer';
+
 import SearchTypeahead from './SearchTypeahead';
 
 // SearchTypeahead wrapper
-export default class SearchForm extends React.Component {
+class SearchForm extends React.Component {
 
   constructor(props) {
     super(props);
@@ -29,7 +32,7 @@ export default class SearchForm extends React.Component {
   }
 
   onChange(selected) {
-    const page = selected[0];  // should be single page selected
+    const page = selected[0]; // should be single page selected
 
     // navigate to page
     if (page != null) {
@@ -43,7 +46,7 @@ export default class SearchForm extends React.Component {
     return (
       <table className="table m-1 search-help">
         <caption className="text-left text-primary p-2 mb-2">
-          <h5 className="m-1"><i className="icon-magnifier pr-2 mb-2"/>{ t('search_help.title') }</h5>
+          <h5 className="m-1"><i className="icon-magnifier pr-2 mb-2" />{ t('search_help.title') }</h5>
         </caption>
         <tbody>
           <tr>
@@ -55,7 +58,7 @@ export default class SearchForm extends React.Component {
           </tr>
           <tr>
             <th className="text-right pt-2">
-              <code>"This is GROWI"</code><br></br>
+              <code>&quot;This is GROWI&quot;</code><br></br>
               <small>({ t('search_help.phrase.syntax help') })</small>
             </th>
             <td><h6 className="m-0 pt-1">{ t('search_help.phrase.desc', { phrase: 'This is GROWI' }) }</h6></td>
@@ -72,6 +75,14 @@ export default class SearchForm extends React.Component {
             <th className="text-right pt-2"><code>-prefix:/user/</code></th>
             <td><h6 className="m-0 pt-1">{ t('search_help.exclude_prefix.desc', { path: '/user/' }) }</h6></td>
           </tr>
+          <tr>
+            <th className="text-right pt-2"><code>tag:wiki</code></th>
+            <td><h6 className="m-0 pt-1">{ t('search_help.tag.desc', { tag: 'wiki' }) }</h6></td>
+          </tr>
+          <tr>
+            <th className="text-right pt-2"><code>-tag:wiki</code></th>
+            <td><h6 className="m-0 pt-1">{ t('search_help.exclude_tag.desc', { tag: 'wiki' }) }</h6></td>
+          </tr>
         </tbody>
       </table>
     );
@@ -85,7 +96,6 @@ export default class SearchForm extends React.Component {
 
     return (
       <SearchTypeahead
-        crowi={this.props.crowi}
         onChange={this.onChange}
         onSubmit={this.props.onSubmit}
         onInputChange={this.props.onInputChange}
@@ -97,11 +107,20 @@ export default class SearchForm extends React.Component {
       />
     );
   }
+
 }
 
+/**
+ * Wrapper component for using unstated
+ */
+const SearchFormWrapper = (props) => {
+  return createSubscribedElement(SearchForm, props, [AppContainer]);
+};
+
 SearchForm.propTypes = {
-  t: PropTypes.func.isRequired,               // i18next
-  crowi: PropTypes.object.isRequired,
+  t: PropTypes.func.isRequired, // i18next
+  appContainer: PropTypes.instanceOf(AppContainer).isRequired,
+
   keyword: PropTypes.string,
   onSubmit: PropTypes.func.isRequired,
   onInputChange: PropTypes.func,
@@ -110,3 +129,5 @@ SearchForm.propTypes = {
 SearchForm.defaultProps = {
   onInputChange: () => {},
 };
+
+export default SearchFormWrapper;

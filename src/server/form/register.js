@@ -1,6 +1,5 @@
-'use strict';
-
 const form = require('express-form');
+
 const field = form.field;
 
 module.exports = form(
@@ -8,7 +7,5 @@ module.exports = form(
   field('registerForm.name').required(),
   field('registerForm.email').required(),
   field('registerForm.password').required().is(/^[\x20-\x7F]{6,}$/),
-  field('registerForm.googleId'),
-  field('registerForm.googleImage'),
-  field('registerForm[app:globalLang]')
+  field('registerForm[app:globalLang]'),
 );

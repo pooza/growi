@@ -1,7 +1,10 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 
-export default class LikeButton extends React.Component {
+import { createSubscribedElement } from './UnstatedUtils';
+import AppContainer from '../services/AppContainer';
+
+class LikeButton extends React.Component {
 
   constructor(props) {
     super(props);
@@ -16,24 +19,25 @@ export default class LikeButton extends React.Component {
   handleClick(event) {
     event.preventDefault();
 
+    const { appContainer } = this.props;
     const pageId = this.props.pageId;
 
     if (!this.state.isLiked) {
-      this.props.crowi.apiPost('/likes.add', {page_id: pageId})
-      .then(res => {
-        this.setState({isLiked: true});
-      });
+      appContainer.apiPost('/likes.add', { page_id: pageId })
+        .then((res) => {
+          this.setState({ isLiked: true });
+        });
     }
     else {
-      this.props.crowi.apiPost('/likes.remove', {page_id: pageId})
-      .then(res => {
-        this.setState({isLiked: false});
-      });
+      appContainer.apiPost('/likes.remove', { page_id: pageId })
+        .then((res) => {
+          this.setState({ isLiked: false });
+        });
     }
   }
 
   isUserLoggedIn() {
-    return this.props.crowi.me !== '';
+    return this.props.appContainer.me !== '';
   }
 
   render() {
@@ -50,17 +54,33 @@ export default class LikeButton extends React.Component {
     const addedClassName = addedClassNames.join(' ');
 
     return (
-      <button href="#" title="Like" onClick={this.handleClick}
-          className={`btn-like btn btn-default btn-circle btn-outline ${addedClassName}`}>
+      <button
+        type="button"
+        href="#"
+        title="Like"
+        onClick={this.handleClick}
+        className={`btn-like btn btn-default btn-circle btn-outline ${addedClassName}`}
+      >
         <i className="icon-like"></i>
       </button>
     );
   }
+
 }
 
+/**
+ * Wrapper component for using unstated
+ */
+const LikeButtonWrapper = (props) => {
+  return createSubscribedElement(LikeButton, props, [AppContainer]);
+};
+
 LikeButton.propTypes = {
-  crowi: PropTypes.object.isRequired,
+  appContainer: PropTypes.instanceOf(AppContainer).isRequired,
+
   pageId: PropTypes.string,
   isLiked: PropTypes.bool,
   size: PropTypes.string,
 };
+
+export default LikeButtonWrapper;

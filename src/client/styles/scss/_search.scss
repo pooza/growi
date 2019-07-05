@@ -1,34 +1,38 @@
 // import react-bootstrap-typeahead
-@import "~react-bootstrap-typeahead/css/Typeahead";
+@import '~react-bootstrap-typeahead/css/Typeahead';
+
 .search-listpage-icon {
   font-size: 16px;
   color: #999;
 }
 
 .search-listpage-clear {
-  display: none;
   position: absolute;
   right: 8px;
-  font-size: 0.6em;
+  display: none;
   width: 22px;
   height: 22px;
-  color: #ccc;
   padding: 8px;
+  font-size: 0.6em;
+  color: #ccc;
 }
 
 .search-typeahead {
   position: relative;
+
   .search-clear {
     position: absolute;
-    z-index: 3;
     top: 4px;
     right: 4px;
+    z-index: 3;
     width: 24px;
     height: 24px;
-    color: #999;
     padding: 0;
+    color: #999;
   }
+
   .rbt-menu {
+    max-height: none !important;
     margin-top: 3px;
 
     li a span {
@@ -37,20 +41,22 @@
         padding: 0 4px;
         color: inherit;
       }
+
       .page-list-meta {
-        font-size: .9em;
+        font-size: 0.9em;
         color: #999;
-        >span {
-          margin-right: .3rem;
+
+        > span {
+          margin-right: 0.3rem;
         }
       }
     }
   }
 }
 
-
 // top and sidebar input styles
-.search-top, .search-sidebar {
+.search-top,
+.search-sidebar {
   .search-clear {
     top: 3px;
     right: 26px;
@@ -59,31 +65,35 @@
   .btn-group-dropdown-scope .dropdown-toggle {
     min-width: 95px;
     height: 30px;
+    padding-top: 4px;
+    padding-right: 4px;
+    padding-bottom: 4px;
     border-top-left-radius: 40px;
     border-bottom-left-radius: 40px;
-    padding-top: 4px;
-    padding-bottom: 4px;
-    padding-right: 4px;
   }
+
   // using react-bootstrap-typeahead
   // see: https://github.com/ericgio/react-bootstrap-typeahead
   .rbt-input.form-control {
+    height: 30px;
     border: none;
     border-top-right-radius: 40px;
     border-bottom-right-radius: 40px;
-    height: 30px;
 
     .rbt-input-wrapper {
       margin-left: 8px;
     }
   }
+
   .btn-group-submit-search {
     position: absolute;
     top: 0;
     right: 0;
+
     .btn {
       padding: 4px 10px;
     }
+
     z-index: 3;
   }
 }
@@ -96,16 +106,22 @@
   .rbt-input.form-control {
     width: 200px;
     transition: 0.3s ease-out;
+
     // focus
     &.focus {
       width: 300px;
     }
   }
 }
+
 .search-sidebar {
-  .search-form, .form-group, .rbt-input.form-control, .input-group {
+  .search-form,
+  .form-group,
+  .rbt-input.form-control,
+  .input-group {
     width: 100%;
   }
+
   .btn-group-submit-search {
     right: 30px;
   }
@@ -113,31 +129,37 @@
 
 @mixin search-typeahead-rbtmenu-mt($margin-top) {
   .search-typeahead .rbt-menu {
-    margin-top: $margin-top;    // DIRTY HACK
-                                //   note: 'transform: translate3d(0px, XXpx, 0px)' calculation has failed
-                                //         since upgrade react-bootstrap-typeahead to v3.3.2 -- 2019.02.05 Yuki Takei
+    margin-top: $margin-top; // DIRTY HACK
+    //                            note: 'transform: translate3d(0px, XXpx, 0px)' calculation has failed
+    //                                  since upgrade react-bootstrap-typeahead to v3.3.2 -- 2019.02.05 Yuki Takei
   }
 }
-#search-top, #renamePage, #duplicatePage, .search-page-input {
+
+#search-top,
+#renamePage,
+#duplicatePage,
+.search-page-input {
   @include search-typeahead-rbtmenu-mt(36px);
 }
 
 .search-result {
-
   .search-result-list {
     nav {
       padding-right: 0;
+
       &.affix {
         top: 58px;
         width: 33%;
+        height: 100%;
         padding-right: 5px;
         padding-bottom: 50px;
-        height: 100%;
         overflow-y: scroll;
       }
+
       .nav {
         > li {
           padding: 2px 8px;
+
           &.active {
             padding-right: 5px;
             border-right: solid 3px transparent;
@@ -161,35 +183,39 @@
     padding-bottom: 32px;
 
     .search-result-page {
+      padding-top: 48px;
       // adjust for anchor links by the height of fixed .search-page-input
       margin-top: -48px;
-      padding-top: 48px;
 
       > h2 {
+        display: inline;
+        margin-right: 10px;
         font-size: 20px;
         line-height: 1em;
       }
+
       &:first-child > h2 {
         margin-top: 0;
       }
 
       .wiki {
-        border: solid 1px #ccc;
         padding: 16px;
-        border-radius: 3px;
         font-size: 13px;
+        border: solid 1px #ccc;
+        border-radius: 3px;
       }
     }
   }
 }
 
 .search-page-input {
-  padding: 10px 0;
   position: sticky;
   top: 0;
   z-index: 99;
-  .input-group-btn .btn{
-    padding: 0px 10px;
+  padding: 10px 0;
+
+  .input-group-btn .btn {
     height: 34px;
+    padding: 0px 10px;
   }
 }

@@ -1,6 +1,5 @@
 .main-container {
   .user-page-header {
-
     #revision-path {
       margin-bottom: 0;
     }
@@ -16,8 +15,8 @@
     }
 
     .picture {
-      height: 64px;
       width: 64px;
+      height: 64px;
     }
 
     .user-page-meta {
@@ -25,30 +24,32 @@
 
       ul {
         padding-left: 0;
+
         li {
           list-style: none;
         }
       }
+
       .user-page-username {
         font-weight: bold;
       }
-      .user-page-email {
-      }
-      .user-page-introduction {
-      }
+
+      .user-page-email {}
+
+      .user-page-introduction {}
     }
 
-    .btn-like, .btn-bookmark {
+    .btn-like,
+    .btn-bookmark {
       &.btn-lg {
-        font-size: 1.5em;
         padding: 8px;
+        font-size: 1.5em;
       }
     }
   }
 
   // affix
   .user-page-header.affix {
-
     .users-meta {
       margin-left: 15px;
     }
@@ -59,18 +60,34 @@
     }
 
     .picture {
-      height: 48px;
       width: 48px;
+      height: 48px;
     }
   }
-}
 
-.user-component {
+  .user-page-content {
+    #user-draft-list {
+      #draft-list {
+        .panel-title {
+          width: 100%;
 
-  img.picture {
-    margin-right: 4px;
-  }
-  span {
-    margin-right: 4px;
+          .label-draft {
+            padding: 1px 5px;
+            margin: 0 0 0 4px;
+            font-weight: normal;
+          }
+        }
+
+        a {
+
+          .icon-copy,
+          .draft-delete,
+          .icon-edit {
+            margin: 0 0 0 4px;
+            cursor: pointer;
+          }
+        }
+      }
+    }
   }
 }
