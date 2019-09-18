@@ -5333,7 +5333,7 @@ graceful-fs@^4.2.0:
   resolved "https://registry.yarnpkg.com/graceful-fs/-/graceful-fs-4.2.2.tgz#6f0952605d0140c1cfdb138ed005775b92d67b02"
   integrity sha512-IItsdsea19BoLC7ELy13q1iJFNmd7ofZH5+X/pJr90/nRoPEX0DJo1dHDbgtYWOhJhcCgMDTOw84RZ72q6lB+Q==
 
-growi-commons@^4.0.7:
+growi-commons@^4.0.1, growi-commons@^4.0.7:
   version "4.0.7"
   resolved "https://registry.yarnpkg.com/growi-commons/-/growi-commons-4.0.7.tgz#f9ff9c2f6afe3a9982b689d368e8e7a000d137e8"
   integrity sha512-Ipku+WlfXsSqS+2fuDRfOeCP5Q8dBo/8XYlcjsPFdCvKa9lBr2OsSN2ac9dAXaL9bH4wc+Kz7UR/OLjAMlx0Iw==
