@@ -1,10 +1,24 @@
 # CHANGES
 
+## 3.5.16-RC
 
-## 3.5.13-RC
+* Fix: Full Text Search doesn't work after when building indices
+    * Introduced by 3.5.12
+
+## 3.5.15
+
+* Feature: Import/Export Page data
+* Fix: The link to Sandbox on Markdown Help Modal doesn't work
+* Support: Upgrade libs
+    * codemirror
+
+## 3.5.14 (Missing number)
+
+## 3.5.13
 
 * Feature: Re-edit comments
-* Support: Update libs
+* Support: [growi-plugin-attachment-refs](https://github.com/weseek/growi-plugin-attachment-refs)
+* Support: Upgrade libs
     * entities
     * markdown-it
 
