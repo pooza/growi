@@ -102,7 +102,7 @@
     "express-webpack-assets": "^0.1.0",
     "graceful-fs": "^4.1.11",
     "growi-commons": "^4.0.7",
-    "growi-plugin-lsx": "weseek/growi-plugin-lsx#master",
+    "growi-plugin-lsx": "^3.0.3",
     "helmet": "^3.13.0",
     "i18next": "^17.0.3",
     "i18next-express-middleware": "^1.4.1",
