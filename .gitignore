@@ -27,6 +27,7 @@ package-lock.json
 /public/js
 /public/styles
 /public/uploads
+/public/.well-known
 /src/*/__build__/
 /__build__/**
 /src/*/dist/
