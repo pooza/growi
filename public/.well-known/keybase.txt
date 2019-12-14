@@ -1,0 +1,56 @@
+==================================================================
+https://keybase.io/pooza
+--------------------------------------------------------------------
+
+I hereby claim:
+
+  * I am an admin of https://growi.b-shock.org
+  * I am pooza (https://keybase.io/pooza) on keybase.
+  * I have a public key ASB9aF-sOQbdqtQfvLKA11hUchg9Cs72k2i8ThebKH-Qygo
+
+To do so, I am signing this object:
+
+{
+  "body": {
+    "key": {
+      "eldest_kid": "0120086a7f9fddf9d7fcd0437db92ce01a0529c5f373abbb7fff4b6b6f44393fd03e0a",
+      "host": "keybase.io",
+      "kid": "01207d685fac3906ddaad41fbcb280d7585472183d0acef69368bc4e179b287f90ca0a",
+      "uid": "0854efe0c66c51a2997c4ab06109b119",
+      "username": "pooza"
+    },
+    "merkle_root": {
+      "ctime": 1576202260,
+      "hash": "4b15087e469d61feaef867eeeff34ea1c2ce9642439fe8aa9b887d78404f49b89aba32efaa115415d23cecebf3d65aff93326b202831a0dc7f0a5cf5b1dc19ab",
+      "hash_meta": "a6326ffc741d92cd6734ae1e08c5cdeb22de33d0b856ca7d864461ee064663c3",
+      "seqno": 13440006
+    },
+    "service": {
+      "entropy": "Al7SgGBsyFp5UL2GYYMAMftT",
+      "hostname": "growi.b-shock.org",
+      "protocol": "https:"
+    },
+    "type": "web_service_binding",
+    "version": 2
+  },
+  "client": {
+    "name": "keybase.io go client",
+    "version": "5.1.1"
+  },
+  "ctime": 1576202272,
+  "expire_in": 504576000,
+  "prev": "785d71363f8f418a843aaf3007455a0157b7a6c66fb17f0bed028e7be5372bbf",
+  "seqno": 60,
+  "tag": "signature"
+}
+
+which yields the signature:
+
+hKRib2R5hqhkZXRhY2hlZMOpaGFzaF90eXBlCqNrZXnEIwEgfWhfrDkG3arUH7yygNdYVHIYPQrO9pNovE4Xmyh/kMoKp3BheWxvYWTESpcCPMQgeF1xNj+PQYqEOq8wB0VaAVe3psZvsX8L7QKOe+U3K7/EIHwuk/Fev/ArrkwdByITMuN5COU6KuzD9if7/KtN6pTHAgHCo3NpZ8RAVXzgp0yKI5n3jWG/fHrz2a4V3T53Z+z45oUvXzaOYT171rjGxDEii8XLePVgZXnO5o+I0/ITyFtaUS8GcHazD6hzaWdfdHlwZSCkaGFzaIKkdHlwZQildmFsdWXEIOQbqoLnK3PLlG59m1aGZtFzE+ldOdzxOt6xhMYFui+so3RhZ80CAqd2ZXJzaW9uAQ==
+
+And finally, I am proving ownership of this host by posting or
+appending to this document.
+
+View my publicly-auditable identity here: https://keybase.io/pooza
+
+==================================================================
