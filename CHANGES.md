@@ -1,14 +1,23 @@
 # CHANGES
 
-## v3.8.1-RC
+## v3.8.2
 
-*
+* Improvement: Ensure not to avoid session management even when accessing to healthcheck
+* Support: Upgrade libs
+    * connect-mongo
+    * mongoose
+    * mongoose-gridfs
+    * mongoose-paginate-v2
+
+## v3.8.1
+
+* Fix: Unset overflow-y style for Edit Tags Modal
 
 ## v3.8.0
 
 ### BREAKING CHANGES
 
-- Elasticsearch require the privilege `cluster:monitor/health` instead of `cluster:monitor/nodes/info`
+- Now Elasticsearch requires the privilege `cluster:monitor/health` instead of `cluster:monitor/nodes/info`
 
 Upgrading Guide: <https://docs.growi.org/en/admin-guide/upgrading/38x.html>
 
@@ -27,7 +36,7 @@ Upgrading Guide: <https://docs.growi.org/en/admin-guide/upgrading/38x.html>
 * Fix: Behavior of password reset modal is strange
 * Fix: Import GROWI Archive doesn't restore some data correctly
 * Fix: Attachments list on root page and users top pages
-* Fix: Trash page shouldn't be editable
+* Fix: Trash page is no longer editable
 * Fix: Rendering Timeline on /trash
 
 ## v3.7.4
